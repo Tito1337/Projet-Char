@@ -1,0 +1,555 @@
+dst_rect:   width=1600   height=1125
+src_rect:   width=104857600   height=78643200
+Compiled vertex shader simplevertshader.glsl:
+
+attribute vec4 vertex;
+uniform vec2 offset;
+uniform vec2 scale;
+varying vec2 tcoord;
+void main(void) 
+{
+	vec4 pos = vertex;
+	tcoord.xy = pos.xy;
+	pos.xy = pos.xy*scale+offset;
+	gl_Position = pos;
+}
+
+Compiled fragment shader simplefragshader.glsl:
+varying vec2 tcoord;
+uniform sampler2D tex;
+void main(void) 
+{
+    gl_FragColor = texture2D(tex,tcoord);
+}
+
+Created program id 3 from vs 1 and fs 2
+3:program:
+
+Compiled fragment shader gngdetectcolfragshader.glsl:
+// Detect if texel is inside one of up to 4 color ranges
+// ECAM - Bruxelles, GEI, F. Gueuning  150210
+
+varying vec2 tcoord;
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
+
+uniform vec4 min0; // Min (of first range to test) for color divided by its divby component
+uniform vec4 max0; // Max
+uniform vec4 col0; // Color to attribute to texel if it is detected inside first range
+uniform vec4 min1;
+uniform vec4 max1;
+uniform vec4 col1;
+uniform vec4 min2;
+uniform vec4 max2;
+uniform vec4 col2;
+uniform vec4 min3; // Min (of last possible range to test) for color divided by its divby component
+uniform vec4 max3; // Max
+uniform vec4 col3; // Color to attribute to texel if it is detected inside last possible range
+uniform ivec4 divby; // for each of the up to 4 colors, the divby (0-3) means :
+                     //  1  divide components by  r
+                     //  2                        g
+                     //  3                        b
+                     //  0  previous was the last color to test
+
+int detectCol(vec4 pix, int Divby, vec4 Min, vec4 Max, vec4 Col) {
+    // Detect if color of pix (with components other than Divby divided by component Divby) is between Min and Max
+    vec4 pixrel;
+    pixrel = pix;
+    if (Divby==1) { // Divide by r
+        if (pix.r >= Min.r) { // g,b relative to r
+            pixrel.g = pix.g / pix.r;
+            pixrel.b = pix.b / pix.r;
+        }
+        else return(0);
+    }
+    else if (Divby==2) { // Divide by g 
+        if (pix.g >= Min.g) { // r,b relative to g
+            pixrel.r = pix.r / pix.g;
+            pixrel.b = pix.b / pix.g;
+        }
+        else return(0);
+    }
+    else if (Divby==3) { // Divide by b
+        if (pix.b >= Min.b) { // r,g relative to b
+            pixrel.r = pix.r / pix.b;
+            pixrel.g = pix.g / pix.b;
+        }
+        else return(0);
+    }
+    if (all(greaterThanEqual(pixrel, Min))) {
+        if (all(lessThanEqual(pixrel, Max))) {
+            gl_FragColor = Col; // Color detected
+            return(1);
+        }
+    }
+    return(0);
+}
+
+void main(void) 
+{
+	float y = texture2D(tex0,tcoord).r;
+	float u = texture2D(tex1,tcoord).r;
+	float v = texture2D(tex2,tcoord).r;
+
+	vec4 pix;
+	// res.r = (y + (1.370705 * (v-0.5)));
+	// res.g = (y - (0.698001 * (v-0.5)) - (0.337633 * (u-0.5)));
+	// res.b = (y + (1.732446 * (u-0.5)));
+    pix.r = (y + (1.403 * (v-0.5)));
+    pix.g = (y - (0.714 * (v-0.5)) - (0.344 * (u-0.5)));
+    pix.b = (y + (1.773 * (u-0.5)));
+	pix.a = 1.0;
+    pix = clamp(pix,vec4(0),vec4(1));
+
+    if (divby.x>0) { // if first color to detect is defined
+        if (detectCol(pix, divby.x, min0, max0, col0)==0) { // if first color not detected
+            if (divby.y>0) { // if second color is defined
+                if (detectCol(pix, divby.y, min1, max1, col1)==0) { // if second not detected
+                    if (divby.z>0) { // if third is defined
+                        if (detectCol(pix, divby.z, min2, max2, col2)==0) {
+                            if (divby.w>0) { // if last is defined
+                                if (detectCol(pix, divby.w, min3, max3, col3)==0) {
+                                    //gl_FragColor = clamp(pix,vec4(0),vec4(1));
+                                    gl_FragColor = pix;
+                                }
+                            }
+                            else gl_FragColor = pix;
+                        }
+                    }
+                    else gl_FragColor = pix;
+                }
+            }
+            else gl_FragColor = pix;
+        }
+    }
+    else gl_FragColor = pix;
+}
+
+Created program id 5 from vs 1 and fs 4
+5:program:
+
+Compiled fragment shader yuvfragshader.glsl:
+varying vec2 tcoord;
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
+//uniform vec2 ytexelsize;
+void main(void) 
+{
+	float y = texture2D(tex0,tcoord).r;
+	float u = texture2D(tex1,tcoord).r;
+	float v = texture2D(tex2,tcoord).r;
+
+	vec4 res;
+	res.r = (y + (1.370705 * (v-0.5)));
+	res.g = (y - (0.698001 * (v-0.5)) - (0.337633 * (u-0.5)));
+	res.b = (y + (1.732446 * (u-0.5)));
+	res.a = 1.0;
+    gl_FragColor = clamp(res,vec4(0),vec4(1));
+}
+
+Created program id 7 from vs 1 and fs 6
+7:program:
+
+Compiled fragment shader col2sxsy_fragshader.glsl:
+// Detect if texel is inside one of up to 4 color ranges
+// ECAM - Bruxelles, GEI, F. Gueuning  150224
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture with colors detected (one is col)
+uniform vec2 texturesize; // size of texture of tex0 (no more used)
+
+void main(void) 
+{
+    vec4 col = texture2D(tex0, tcoord);
+    if (col.a <1.) // if color detected
+    {
+        vec4 xycol;
+        xycol.a = col.a; // color id
+        //X xycol.b = tcoord.y; // y coord assuming texturesize.y = 256
+        //X float x = floor(tcoord.x*texturesize.x);
+        xycol.b = gl_FragCoord.y/255.; // y coord assuming < texturesize.y <= 256
+        float x = gl_FragCoord.x;
+        if (x < 256.)
+        {
+            xycol.r = x/255.; // x coord on 2 bytes
+            xycol.g = 0.;
+        }
+            else
+        {
+            xycol.g = floor(x/256.);
+            xycol.r = (x-256.*xycol.g)/255.;
+            xycol.g = xycol.g/255.;
+        }
+        gl_FragColor = xycol; // r: x(lsb),  g: x(msb),  b: y,  a: color id
+                              // x between 0 and 767 : 255.*(r+256.*b)
+                              // y between 0 and 255 : 255.*b
+    }
+    else gl_FragColor = vec4(1.);
+}
+
+Created program id 9 from vs 1 and fs 8
+9:program:
+
+Compiled fragment shader init_n_fragshader.glsl:
+// Compute n = number of occurrences of color col of 4x4 texels
+// ECAM - Bruxelles, GEI, F. Gueuning  150224
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture where  r:x(lsb),  g:x(msb),  b:y,  a:col
+uniform vec2 texelsize; // size of texel of tex0
+uniform float idcol; // This is the only color considered here
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+	float n = 0.0; // count
+    vec4 c;
+    
+    // assuming size(texture_from) = (4x4) * size(texture_to)
+    for(float offsetx = -1.5; offsetx < 2.; offsetx++)
+    {
+        for(float offsety = -1.5; offsety < 2.; offsety++)
+        {
+            //if (all(equal(col, texture2D(tex0, tcoord+vec2(offsetx, offsety)*texelsize))))
+            // position = tcoord+vec2(offsetx, offsety)*texelsize;
+            // floor(tcoord * texturesize2 + .5)/texturesize2  more accurate position than tcoord
+            c = texture2D(tex0, tcoord + texelsize*vec2(offsetx, offsety));
+            if (abs(c.a-idcol) < 0.0019531250) // 1/512
+                n += 1.;
+        }
+    }
+    gl_FragColor = encode32int(n); // convert from float to rgba
+}
+
+Created program id 11 from vs 1 and fs 10
+11:program:
+
+Compiled fragment shader init_sx_fragshader.glsl:
+// Compute sx = sum of x position of occurrences of color col of 4x4 texels
+// ECAM - Bruxelles, GEI, F. Gueuning  150224
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture where  r:x(lsb),  g:x(msb),  b:y,  a:col
+uniform vec2 texelsize; // size of texel of tex0
+uniform float idcol; // This is the only color considered here
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+    float sx = 0.0; // count
+    vec4 c;
+    
+    // assuming size(texture_from) = (4x4) * size(texture_to)
+    for(float offsetx = -1.5; offsetx < 2.; offsetx++)
+    {
+        for(float offsety = -1.5; offsety < 2.; offsety++)
+        {
+            //if (all(equal(col, texture2D(tex0, tcoord+vec2(offsetx, offsety)*texelsize))))
+            // position = tcoord+vec2(offsetx, offsety)*texelsize;
+            // floor(tcoord * texturesize2 + .5)/texturesize2  more accurate position than tcoord
+            c = texture2D(tex0, tcoord + texelsize*vec2(offsetx, offsety));
+            if (abs(c.a-idcol) < 0.0019531250) // 1/512
+               sx += (c.r+c.g*256.);
+        }
+    }
+    gl_FragColor = encode32int(sx*255.); // convert from float to rgba
+}
+
+Created program id 13 from vs 1 and fs 12
+13:program:
+
+Compiled fragment shader init_sy_fragshader.glsl:
+// Compute sy = sum of y position of occurrences of color col of 4x4 texels
+// ECAM - Bruxelles, GEI, F. Gueuning  150224
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture where  r:x(lsb),  g:x(msb),  b:y,  a:col
+uniform vec2 texelsize; // size of texel of tex0
+uniform float idcol; // This is the only color considered here
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+    float sy = 0.0; // count
+    vec4 c;
+    
+    // assuming size(texture_from) = (4x4) * size(texture_to)
+    for(float offsetx = -1.5; offsetx < 2.; offsetx++)
+    {
+        for(float offsety = -1.5; offsety < 2.; offsety++)
+        {
+            //if (all(equal(col, texture2D(tex0, tcoord+vec2(offsetx, offsety)*texelsize))))
+            // position = tcoord+vec2(offsetx, offsety)*texelsize;
+            // floor(tcoord * texturesize2 + .5)/texturesize2  more accurate position than tcoord
+            c = texture2D(tex0, tcoord + texelsize*vec2(offsetx, offsety));
+            if (abs(c.a-idcol) < 0.0019531250) // 1/512
+                sy += c.b;
+        }
+    }
+    gl_FragColor = encode32int(sy*255.); // convert from float to rgba
+}
+
+Created program id 15 from vs 1 and fs 14
+15:program:
+
+Compiled fragment shader init_sd2_fragshader.glsl:
+// Compute sd2 = sum of x²+y² with x,y position of occurrences of color col of 4x4 texels
+// ECAM - Bruxelles, GEI, F. Gueuning  150224
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture where  r:x(lsb),  g:x(msb),  b:y,  a:col
+uniform vec2 texelsize; // size of texel of tex0
+uniform float idcol; // This is the only color considered here
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+    float sd2 = 0.0; // count
+    vec4 c;
+    float sx;
+    
+    
+    // assuming size(texture_from) = (4x4) * size(texture_to)
+    for(float offsetx = -1.5; offsetx < 2.; offsetx++)
+    {
+        for(float offsety = -1.5; offsety < 2.; offsety++)
+        {
+            //if (all(equal(col, texture2D(tex0, tcoord+vec2(offsetx, offsety)*texelsize))))
+            // position = tcoord+vec2(offsetx, offsety)*texelsize;
+            // floor(tcoord * texturesize2 + .5)/texturesize2  more accurate position than tcoord
+            c = texture2D(tex0, tcoord + texelsize*vec2(offsetx, offsety));
+            if (abs(c.a-idcol) < 0.0019531250) // 1/512
+                sx = c.r+c.g*256.;
+                sd2 += sx*sx + c.b*c.b;
+        }
+    }
+    gl_FragColor = encode32int(sd2*65025.); // convert from float to rgba
+}
+
+
+Created program id 17 from vs 1 and fs 16
+17:program:
+
+Compiled fragment shader col_k_fragshader.glsl:
+// Compute k (we could say "coefficient de compacité" from n, sx, sy, sd2
+// ECAM - Bruxelles, GEI, F. Gueuning  150222
+// K = 2*pi * ( ΣD2 - ( (ΣX)2 + (ΣY)2 ) / N ) / N²
+// Pour un disque parfait, K vaudrait 1, il semble que si K est supérieur à environ 5, il ne s'agit
+// vraiment pas d'une pièce massive (à tester).
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture col_n
+uniform sampler2D tex1; // texture col_sx
+uniform sampler2D tex2; // texture col_sy
+uniform sampler2D tex3; // texture col_sd2
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+    // K = 2*pi * ( ΣD2 - ( (ΣX)2 + (ΣY)2 ) / N ) / N²
+    float n = decode32int(texture2D(tex0, tcoord));
+    float sx = decode32int(texture2D(tex1, tcoord));
+    float sy = decode32int(texture2D(tex2, tcoord));
+    float sd2 = decode32int(texture2D(tex3, tcoord));
+    float k10 = floor(62.831853 * (sd2 - (sx*sx + sy*sy)/n ) / (n*n)); //  floor(10*K)
+    gl_FragColor = encode32int(k10); // convert from float (considered as int32) to rgba
+}
+
+Created program id 19 from vs 1 and fs 18
+19:program:
+
+Compiled fragment shader sum4_fragshader.glsl:
+// Compute sum(float converted in rgba) of 2x2 texels
+// float can be any of n, sx, sy ,sd2
+// ECAM - Bruxelles, GEI, F. Gueuning  150221
+
+varying vec2 tcoord;
+uniform sampler2D tex0; // texture from which 4 values must be summed
+uniform vec2 texelsize; // size of texel of tex0
+uniform vec2 texturesize2; // 2 * size of texture of tex0
+
+vec4 encode32int(float f) { // assume uint given as float
+    if (f<256.) return vec4(f/255., 0., 0., 0.);
+    if (f<65536.) {
+        float H = floor(f/256.);
+        return vec4((f-H*256.)/255., H/255., 0., 0.);
+    }
+    if (f<16777216.) {
+        float H = floor(f/65536.);
+        float M = floor((f-H*65536.)/256.);
+        return vec4((f-H*65536.-M*256.)/255., M/255., H/255., 0.);
+    }
+    if (f>=4294967296.) return vec4(1.) ; // replace it by float conversion (in the future)
+    float H = floor(f/16777216.);
+    float M = floor((f-H*16777216.)/65536.);
+    float L = floor((f-H*16777216.-M*65536.)/256.);
+    return vec4((f-H*16777216.-M*65536.-L*256.)/255., L/255., M/255., H/255.);
+}
+float decode32int(vec4 rgba) {
+    if (rgba.a == 0.) {
+        if (rgba.b == 0.) {
+            if (rgba.g == 0.) return rgba.r*255.;
+            else return (rgba.g*256. + rgba.r)*255.;
+        }
+        else return ((rgba.b*256. + rgba.g)*256. + rgba.r)*255.;
+    }
+    else return (((rgba.a*256. + rgba.b)*256. + rgba.g)*256. + rgba.r)*255.;
+}
+
+void main(void) 
+{
+	float s;
+	//vec2 position;
+    s  = decode32int(texture2D(tex0, tcoord + vec2(-0.5,-0.5)*texelsize));
+    s += decode32int(texture2D(tex0, tcoord + vec2( 0.5,-0.5)*texelsize));
+    s += decode32int(texture2D(tex0, tcoord + vec2(-0.5, 0.5)*texelsize));
+    s += decode32int(texture2D(tex0, tcoord + vec2( 0.5, 0.5)*texelsize));
+    gl_FragColor = encode32int(s); // convert from float (considered as int32) to rgba
+}
+
+Created program id 21 from vs 1 and fs 20
+21:program:
+
+Init camera output with 768/512
+Creating pool with 3 buffers of size 589824
+Camera successfully created
+Levels used: 5, smallest level w/h: 48/32
+Running frame loop
+[1;75r[0;10m[4l[?7h[39;49m[39;49m[37m[40m[H[J   Framerate: 2.86927q[39;49m[75d[K[75;1H
