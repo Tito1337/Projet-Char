@@ -1,0 +1,761 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xmlns:mwsh="http://www.mathworks.com/namespace/mcode/v1/syntaxhighlight.dtd">
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <!--
+This HTML is auto-generated from an M-file.
+To make changes, update the M-file and republish this document.
+      -->
+      <title>function positionfromcamera15()</title>
+      <meta name="generator" content="MATLAB 7.3">
+      <meta name="date" content="2015-03-15">
+      <meta name="m-file" content="positionfromcamera15"><style>
+
+body {
+  background-color: white;
+  margin:10px;
+	font-family: 'Trebuchet MS', Verdana, Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head>
+   <body>
+      <div class="content">
+         <h1>function positionfromcamera15()</h1>
+         <introduction></introduction>
+         <h2>Contents</h2>
+         <div>
+            <ul>
+               <li><a href="#1">Introduction</a></li>
+               <li><a href="#2">Initialisation des coordonn&eacute;es de la cam&eacute;ra et du robot</a></li>
+               <li><a href="#3">Dessin des axes principaux</a></li>
+               <li><a href="#4">Dessin des coordonn&eacute;es du robot</a></li>
+               <li><a href="#5">Dessin des coordonn&eacute;es de la cam&eacute;ra (sur le robot)</a></li>
+               <li><a href="#6">dessin de l'image (donc jpeg retourn&eacute; de 180&deg;) corrig&eacute;e en distortion dans le plan focal</a></li>
+               <li><a href="#7">dessin de l'image (donc jpeg retourn&eacute; de 180&deg;) sur le capteur dans un plan l&eacute;g&egrave;rement arri&egrave;re au plan focal de la cam&eacute;ra</a></li>
+               <li><a href="#8">dessin de l'objet</a></li>
+               <li><a href="#9">Conversion de coordonn&eacute;es du rep&egrave;re cam&eacute;ra only vers celui du robot</a></li>
+               <li><a href="#10">Conversion de coordonn&eacute;es du rep&egrave;re du robot vers celui du terrain</a></li>
+            </ul>
+         </div>
+         <h2>Introduction<a name="1"></a></h2><pre class="codeinput"><span class="comment">% D&eacute;tection de position par cam&eacute;ra embarqu&eacute;e</span>
+<img vspace="29" hspace="29" src="positionfromcamera15.svg">
+<span class="comment">% F. Gueuning, 2010-2015   Unit&eacute; Electronique et informatique         ECAM, Bruxelles</span>
+<span class="comment">%</span>
+<span class="comment">% SPc 150314: positioncamera3 + en 3d: dessin du capteur, de l'image corrig&eacute;e en distortion (en plan focal) et objet</span>
+<span class="comment">% SPn 130211: cr&eacute;ation depuis positionfromcamera2, d&eacute;coupage en plusieurs fonctions</span>
+<span class="comment">% SPn 130210: corrections orthographiques</span>
+<span class="comment">% SPn 120323: distinction cr, ch, co plutot que ca + correction formule MAIS RESTE PROBLEME DE SOMME az ET SOMME el !</span>
+<span class="comment">% SPn 120301: function avec pix, co, dis</span>
+<span class="comment">% SPn 120220: Dessin des syst&egrave;mes d'axes et calcul de distorsion</span>
+<span class="comment">% SPn 110404: Premi&egrave;res r&eacute;flexions</span>
+<span class="comment">%</span>
+<span class="comment">% Les fonctions suivantes sont successivement appel&eacute;es :</span>
+<span class="comment">% imyz = pix2yz(trg, sens): Conversion des pixels en coordonn&eacute;es de points images (en mm) dans le plan du capteur</span>
+<span class="comment">%                           et dans le rep&egrave;re de la cam&eacute;ra non redress&eacute; (co: camera only)</span>
+<span class="comment">% objco = xfyz2objco(f, imyz, ref): Conversion des points d'image en points d'objets dans le rep&egrave;re co (camera only)</span>
+<span class="comment">%          Ceci n&eacute;cessite des informations suppl&eacute;mentaires &agrave; choisir parmi les deux options suivantes :</span>
+<span class="comment">%           - 4 points d'image dont les distances entre les points d'objet correspondants sont connues.</span>
+<span class="comment">%             (voir "Finding 3D Positions from 2D Images Feasibility Analysis, H. G. Lochana Prematunga, ICONS 2012")</span>
+<span class="comment">%           - l'appartenance des points d'objet &agrave; un plan connu</span>
+<span class="comment">% co2ro    Conversion du rep&egrave;re co vers coordonn&eacute;es dans le rep&egrave;re ro du robot</span>
+<span class="comment">% ro2abs   Conversion du rep&egrave;re ro vers coordonn&eacute;es dans le rep&egrave;re du terrain</span>
+<span class="comment">%</span>
+<span class="comment">% IN:  pix    structure des pixels &agrave; traiter</span>
+<span class="comment">%         .r indices des lignes (rang&eacute;es)</span>
+<span class="comment">%      coord  structure de coordonn&eacute;es de robot et cam&eacute;ra</span>
+<span class="comment">%      sens   structure de caract&eacute;ristiques du capteur</span>
+<span class="comment">% On a</span>
+<span class="comment">%  - 4 syst&egrave;mes de coordonn&eacute;es : robot (ro), cam&eacute;ra redress&eacute;e (ca), image (im), absolu ()</span>
+<span class="comment">%  - une cible (target, tar) ou une balise (beacon, bea) visibles sur une image</span>
+<span class="comment">%  - les coordonn&eacute;es x, y, z, r, az, el, ah</span>
+<span class="comment">%  - indices de rang&eacute;e (ir) et de colonne (ic) d'un point sur l'image</span>
+<span class="comment">%</span>
+<span class="comment">%  Cam&eacute;ra :</span>
+<span class="comment">%  cam.z      Hauteur du centre de l'objectif de la cam&eacute;ra</span>
+<span class="comment">%  cam.ro.x,.y  Coordonn&eacute;es du centre de l'objectif dans le syst&egrave;me de coord du robot</span>
+<span class="comment">%        .az  Orientation azimutale (proche de 0 si la cam&eacute;ra regarde devant, donc suivant l'axe X</span>
+<span class="comment">%        .el  Orientation d'&eacute;l&eacute;vation (n&eacute;gatif car la cam&eacute;ra regarde vers le bas)</span>
+<span class="comment">%        .ah  Angle de l'horizon avec le bas de l'image, proche de 0&deg;</span>
+<span class="comment">%             Positif si l'horizon apparait plus haut &agrave; droite qu'&agrave; gauche sur l'image</span>
+<span class="comment">%        Lors du calcul des coordonn&eacute;es de cibles et balises exprim&eacute;es dans le rep&egrave;re redress&eacute; de la</span>
+<span class="comment">%        cam&eacute;ra (cr), on a neutralis&eacute; az, el et ah de la cam&eacute;ra. Le rep&egrave;re (cr) est donc</span>
+<span class="comment">%        simplement une translation du rep&egrave;re (ro) valant cam.ro.x,.y,.z</span>
+<span class="comment">%  Robot :</span>
+<span class="comment">%  rob.x, .y   coord absolues du robot</span>
+<span class="comment">%     .az      orientation azimutale du robot sur le terrain</span>
+<span class="comment">%</span>
+<span class="comment">%  Cible (target) :</span>
+<span class="comment">%  tar.im.ir      indice de rang&eacute;e du point d'image de la cible (target)</span>
+<span class="comment">%        .ic                colonne</span>
+<span class="comment">%        .y, .z   coord y et z du point au niveau de l'image apr&egrave;s correction de distortion et</span>
+<span class="comment">%                 redressement compensant cam.ro.ah</span>
+<span class="comment">%     .cr.az      azimut    de la cible dans le rep&egrave;re redress&eacute; de la cam&eacute;ra (donc orient&eacute; comme le robot)</span>
+<span class="comment">%        .el      &eacute;l&eacute;vation de la cible telle que per&ccedil;ue depuis le rep&egrave;re redress&eacute; de la cam&eacute;ra</span>
+<span class="comment">%     .ro.r       distance entre cible et origine du robot</span>
+<span class="comment">%        .az      azimut de la cible en coord du robot</span>
+<span class="comment">%     .x          coord de la cible dans un rep&egrave;re absolu (rep&egrave;re du terrain)</span>
+<span class="comment">%     .y</span>
+<span class="comment">%     .z</span>
+<span class="comment">%</span>
+<span class="comment">%  Balise (beacon) :</span>
+<span class="comment">%  bea...         similaire &agrave; tar mais pour une balise (beacon)</span>
+<span class="comment">%                 on connait les coordonn&eacute;es tar.x,.y,.z des balises</span>
+<span class="comment">%</span>
+<span class="comment">% - On suppose connus les 6 param&egrave;tres de position de la cam&eacute;ra dans le syst&egrave;me de coord du robot :</span>
+<span class="comment">%     cam.ro.x, .y, .z, .az, .el, .ah</span>
+<span class="comment">% - A partir des coordonn&eacute;es d'un point tar.im.ir,.ic de l'image, on peut d&eacute;duire les coord</span>
+<span class="comment">%   correspondantes tar.cr.az,.el de la cible.</span>
+<span class="comment">%    - D'abord calculer tar.im.y et tar.im.z (&agrave; exprimer en mm en supposant nulles au centre de l'image)</span>
+<span class="comment">%      Pour la cmucam3, si on se r&eacute;f&egrave;re aux mesures de distorsion r&eacute;alis&eacute;es en 2010, extrait de polymais.m :</span>
+<span class="comment">%         % distorsion en barillet dans le cas o&ugrave; on veut simuler le comportement de la cam&eacute;ra</span>
+<span class="comment">%         %  521e-6 a &eacute;t&eacute; d&eacute;termin&eacute; exp&eacute;rimentalement 100328 avec les &eacute;tudiants de 4MEO:</span>
+<span class="comment">%         %    un carreau de 32 pixels au centre devient 27 pixels &agrave; 150 pixels du centre  100328</span>
+<span class="comment">%         %    d&eacute;riv&eacute;e au centre: 32/32,  &agrave; 150 pixels: 27/32 = 1-2*a*150 =&gt; a = 521e-6</span>
+<span class="comment">%         PImYZ = PIm(i).Y + j*PIm(i).Z;</span>
+<span class="comment">%         PImYZ = abs(PImYZ).*(1-521e-6*abs(PImYZ)).*exp(j*angle(PImYZ));</span>
+<span class="comment">%         PIm(i).Y = real(PImYZ)*8.2/9; % le nombre d'unit&eacute;s en largeur est &agrave; diminuer car plus larges</span>
+<span class="comment">%      Dans notre cas, ce sont les op&eacute;rations inverses qu'il faut faire puisqu'on doit corriger une image</span>
+<span class="comment">%      prise par la cam&eacute;ra</span>
+<span class="comment">%      Exemple :</span>
+       im0 = imread(<span class="string">'distorsion en barillet.jpg'</span>);
+       <span class="comment">% Ajout d'un contour noir &agrave; l'image (utile uniquement ici pour son affichage, sinon &agrave; &eacute;viter)</span>
+       [r,c,p]=size(im0);
+       bord=4; <span class="comment">% pixels</span>
+       im1 = uint8(zeros(r+2*bord, c+2*bord, p));
+       im1(bord+1:end-bord, bord+1:end-bord, :) = im0;
+       [r,c,p]=size(im1);
+       XY = 2*ones(r+1,1)*(0:c)*9/8.2 + j*(0:r)'*ones(1,c+1); M=mean(mean(XY));
+       k=1; PImYZ{k} = XY;
+       k=2; PImYZ{k} = M + abs(XY-M).*(1+521e-6*abs(XY-M)).*exp(j*angle(XY-M));
+       k=3; PImYZ{k} = M + abs(XY-M).*(1+50e-6*abs(XY-M).^1.5).*exp(j*angle(XY-M));
+       k=4; PImYZ{k} = M + abs(XY-M).*(1+700e-6*abs(XY-M)).*exp(j*angle(XY-M));
+       Tit = {<span class="string">'original'</span> <span class="string">'521e-6                          '</span> <span class="string">'50e-6 et \^1.5'</span> <span class="string">'                    700e-6'</span>};
+       Col = [0 0 0; 0 .5 0; 1 0 0; 0 0 1];
+       <span class="keyword">for</span> k= []; <span class="comment">%[1 4]</span>
+          figure
+          plot([-50 450],[-50 350], <span class="string">'.k'</span>), hold <span class="string">on</span>
+          hs = surf(real(PImYZ{k}), imag(PImYZ{k}), zeros(r+1,c+1), double(im1)/255, <span class="string">'edgecolor'</span>,<span class="string">'none'</span>);
+          hold <span class="string">off</span>
+          title(Tit{k}, <span class="string">'Color'</span>, Col(k,:))
+          view(0,90)
+          set(gca, <span class="string">'DataAspectRatio'</span>, [1 1 1])
+          pause(.5)
+       <span class="keyword">end</span>
+<span class="comment">%      Ne pas oublier de neutraliser l'effet de cam.ro.ah</span>
+<span class="comment">%</span>
+<span class="comment">%    - Puis tenir compte de cam.F (distance focale de la cam&eacute;ra) pour calculer tar.cr.az et tar.cr.el</span>
+<span class="comment">%      tar.cr.az = atan(tar.im.y/cam.F)+cam.ro.az;  % cam.F n&eacute;gatif RELATION INCORRECTE, SOMME VALABLE UNIQUEMENT SI AXE OPTIQUE HORIZONTAL</span>
+<span class="comment">%      tar.cr.el = atan(tar.im.z/(cam.F/cos(tar.cr.az)))+cam.ro.el; % correction 120323  SOMME INCORRECTE</span>
+
+<span class="comment">% - Comment d&eacute;duire tar.ro.r,.az &agrave; partir de tar.cr.az,.el et tar.z ?</span>
+<span class="comment">%   Si cam.ro.x=0 et cam.ro.y=0  alors on a directement  tar.ro.az=tar.cr.az</span>
+<span class="comment">%   Sinon il faut par exemple que tar.cr.el soit non nulle pour d&eacute;duire  tar.ro.r,.az</span>
+<span class="comment">%   ce qui n&eacute;cessite que cam&eacute;ra et cible ne soient pas &agrave; la m&ecirc;me hauteur :</span>
+<span class="comment">%      tar.cr.r = (cam.z-tar.z)*tan(tar.cr.el)</span>
+<span class="comment">%   Autre possibilit&eacute; : se baser sur la taille de l'image de la cible (fonction de son &eacute;loignement).</span>
+<span class="comment">% - Comment d&eacute;terminer l'orientation rob.az et la position rob.x,.y du robot sur le terrain ?</span>
+<span class="comment">%   CECI EST EN GESTATION, IL FAUDRAIT VOIR DES IMAGES POUR SE FAIRE UNE IDEE</span>
+<span class="comment">%   Pour une balise, si on peut d&eacute;duire bea.ro.r,.az comme pour une cible, 2 balises suffisent pour</span>
+<span class="comment">%   connaitre la position (ainsi que l'orientation) du robot, sinon il faut 3 balises.</span>
+<span class="comment">%   On peut aussi se baser sur 2 images &agrave; des positions diff&eacute;rentes et se contenter de 2 balises : si on</span>
+<span class="comment">%   sait qu'on a avanc&eacute; en ligne droite d'une distance D entre les 2 images, avec les 2 azimuts, on a une</span>
+<span class="comment">%   information similaire &agrave; bea.ro.r,.az</span>
+<span class="comment">%   Autre possibilit&eacute; : tenir compte de l'orientation du bord du terrain sur l'image</span>
+
+<span class="comment">% Dessin des syst&egrave;mes de coordonn&eacute;es</span>
+<span class="comment">%------------------------------------</span>
+</pre><h2>Initialisation des coordonn&eacute;es de la cam&eacute;ra et du robot<a name="2"></a></h2><pre class="codeinput">cam.z = 300; <span class="comment">% [mm] hauteur du centre de l'objectif de la cam&eacute;ra</span>
+cam.ro.x = -50;
+cam.ro.y = 100; <span class="comment">% [mm] coordonn&eacute;es du centre de l'objectif dans le syst&egrave;me de coord du robot</span>
+cam.ro.az = 15; <span class="comment">% [&deg;] orientation azimutale (proche de 0 si la cam&eacute;ra regarde devant, donc suivant l'axe X</span>
+cam.ro.el = -30; <span class="comment">% [&deg;] orientation d'&eacute;l&eacute;vation (n&eacute;gatif car la cam&eacute;ra regarde vers le bas)</span>
+cam.ro.ah = 0; <span class="comment">% [&deg;] angle de l'horizon avec le bas de l'image, proche de 0</span>
+               <span class="comment">% positif si l'horizon apparait plus haut &agrave; droite qu'&agrave; gauche sur l'image</span>
+rob.x = 240;
+rob.y = 250; <span class="comment">% [mm] coord absolues du robot</span>
+rob.az = 40; <span class="comment">% [&deg;] orientation azimutale du robot sur le terrain</span>
+roxy = rob.x + j*rob.y; <span class="comment">% robot</span>
+</pre><h2>Dessin des axes principaux<a name="3"></a></h2><pre class="codeinput">figure
+plot3([0 0 0; 600 0 0], [0 0 0; 0 600 0], [0 0 0; 0 0 400], <span class="string">'k'</span>), set(gca, <span class="string">'DataAspectRatio'</span>, [1 1 1])
+view(-10.5, 26)
+view(36.5, 24)
+hold <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="positionfromcamera15_01.png"> <h2>Dessin des coordonn&eacute;es du robot<a name="4"></a></h2><pre class="codeinput">cosraz = cos(rob.az*pi/180);
+sinraz = sin(rob.az*pi/180);
+plot3([0 0; rob.x 0], [0 0; 0 rob.y], [0 0; 0 0], <span class="string">'Color'</span>, [0 .5 0], <span class="string">'linewidth'</span>, 2) <span class="comment">% Lignes sur axes</span>
+plot3(rob.x*[0 1; 2 1], rob.y*[1 0; 1 1], [0 0; 0 0], <span class="string">':'</span>, <span class="string">'Color'</span>, [0 .5 0]) <span class="comment">% pointill&eacute;s ...</span>
+plot3(rob.x+[0; 300*cosraz], rob.y+[0; 300*sinraz], [0; 0], <span class="string">'-.'</span>, <span class="string">'Color'</span>, [0 .5 0], <span class="string">'linewidth'</span>, 2) <span class="comment">% trait d'axe .-.-.</span>
+text(rob.x, -110, 0, [<span class="string">'rob.x = '</span> num2str(rob.x)],<span class="string">'HorizontalAlignment'</span>, <span class="string">'Center'</span>, <span class="string">'Color'</span>, [0 .5 0], <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+text(-80, rob.y, 0, [<span class="string">'rob.y = '</span> num2str(rob.y)],<span class="string">'HorizontalAlignment'</span>, <span class="string">'Center'</span>, <span class="string">'Color'</span>, [0 .5 0], <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+plo = roxy + .7*rob.x*rot((0:abs(rob.az))*sign(rob.az)); <span class="comment">% pour dessin d'angle rob.az</span>
+plot3(real(plo), imag(plo), zeros(size(plo)), <span class="string">'Color'</span>, [0 .5 0])
+text(1.7*rob.x, 1.3*rob.y, 0, [<span class="string">'rob.az = '</span> num2str(rob.az) <span class="string">'&deg;'</span>], <span class="string">'Color'</span>, [0 .5 0], <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+</pre><img vspace="5" hspace="5" src="positionfromcamera15_02.png"> <h2>Dessin des coordonn&eacute;es de la cam&eacute;ra (sur le robot)<a name="5"></a></h2><pre class="codeinput">camroxy = cam.ro.x + j*cam.ro.y;
+camxy = camroxy*rot(rob.az);
+plo = roxy + [0 0 camroxy; cam.ro.x j*cam.ro.y camroxy]*rot(rob.az); <span class="comment">% Pour lignes sur axes</span>
+plot3(real(plo), imag(plo), [0 0 0; 0 0 cam.z], <span class="string">'Color'</span>, <span class="string">'B'</span>, <span class="string">'linewidth'</span>, 2)
+plo = roxy + [cam.ro.x j*cam.ro.y camroxy; camroxy+[0 0 300]]*rot(rob.az); <span class="comment">% Pour pointill&eacute;s ...</span>
+plot3(real(plo), imag(plo), [0 0 cam.z; 0 0 cam.z], <span class="string">'Color'</span>, <span class="string">'B'</span>,  <span class="string">'LineStyle'</span>, <span class="string">':'</span>)
+plo = roxy + camxy + [0; 300*rot(rob.az+cam.ro.az)]; <span class="comment">% Pour  trait d'axe .-.-.</span>
+plot3(real(plo), imag(plo), ones(size(plo))*cam.z, <span class="string">'Color'</span>, <span class="string">'B'</span>,  <span class="string">'LineStyle'</span>, <span class="string">'-'</span>)
+plo = roxy -80j; <span class="comment">% Pour texte cam.ro.x</span>
+text(real(plo), imag(plo), 0, [<span class="string">'cam.ro.x = '</span> num2str(cam.ro.x)], <span class="string">'Color'</span>, <span class="string">'B'</span>, <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+plo = roxy +80j; <span class="comment">% Pour texte cam.ro.y</span>
+text(real(plo), imag(plo), 0, [<span class="string">'cam.ro.y = '</span> num2str(cam.ro.y)], <span class="string">'Color'</span>, <span class="string">'B'</span>, <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+plo = roxy+camxy + 10; <span class="comment">% Pour texte cam.z</span>
+text(real(plo), imag(plo), .7*cam.z, [<span class="string">'cam.z = '</span> num2str(cam.z)], <span class="string">'Color'</span>, <span class="string">'B'</span>, <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+plo = roxy+camxy + 200*rot(rob.az+((0:abs(cam.ro.az))*sign(cam.ro.az))); <span class="comment">% pour dessin d'angle cam.ro.az</span>
+plot3(real(plo), imag(plo), ones(size(plo))*cam.z, <span class="string">'Color'</span>, <span class="string">'B'</span>)
+plo = roxy+camxy + 260*rot(rob.az+cam.ro.az/2); <span class="comment">% pour texte cam.ro.az</span>
+text(real(plo), imag(plo), cam.z, [<span class="string">'cam.ro.az = '</span> num2str(cam.ro.az) <span class="string">'&deg;'</span>], <span class="string">'Color'</span>, <span class="string">'B'</span>, <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+plo = roxy + camxy + [-80; 300]*rot(rob.az+cam.ro.az)*cosd(cam.ro.el); <span class="comment">% Pour  trait d'axe optique .-.-.</span>
+plot3(real(plo), imag(plo), cam.z+[-80; 300]*sind(cam.ro.el), <span class="string">'Color'</span>, <span class="string">'R'</span>,  <span class="string">'LineStyle'</span>, <span class="string">'-.'</span>, <span class="string">'linewidth'</span>, 2)
+plo = roxy+camxy + 200*rot(rob.az+cam.ro.az)*cosd(0:abs(cam.ro.el)); <span class="comment">% pour dessin d'angle cam.ro.el</span>
+plot3(real(plo), imag(plo), cam.z+200*sind(0:abs(cam.ro.el))*sign(cam.ro.el), <span class="string">'Color'</span>, <span class="string">'R'</span>)
+plo = roxy+camxy + 260*rot(rob.az+cam.ro.az)*cosd(cam.ro.el/2); <span class="comment">% pour texte cam.ro.el</span>
+text(real(plo), imag(plo), cam.z+200*sind(cam.ro.el/2)-10, [<span class="string">'cam.ro.el = '</span> num2str(cam.ro.el) <span class="string">'&deg;'</span>], <span class="string">'Color'</span>, <span class="string">'R'</span>, <span class="string">'FontWeight'</span>, <span class="string">'Bold'</span>)
+
+nG = 18; <span class="comment">% taille de grille surface: 18x18 Attention! semble produire des erreurs au-del&agrave; de 18 !? (surface ne donne plus des rectangles)</span>
+surfgrid.ir = (1:(r-1)/(nG-1):r)'*ones(1,nG); <span class="comment">% Grille nGxnG de surface, indices de rang&eacute;es, valeurs extremes: [1;r]</span>
+surfgrid.ic = ones(nG,1) * (1:(c-1)/(nG-1):c); <span class="comment">% Grille nGxnG surface, indices de colonnes, valeurs extremes: [1 c]</span>
+kLook = 10; <span class="comment">% multiplieur pour le dessin du capteur pour qu'il soit plus loin du centre optique et plus grand</span>
+</pre><img vspace="5" hspace="5" src="positionfromcamera15_03.png"> <h2>dessin de l'image (donc jpeg retourn&eacute; de 180&deg;) corrig&eacute;e en distortion dans le plan focal<a name="6"></a></h2><pre class="codeinput">[imnodisto.co, sens] = pix2yz(surfgrid, <span class="string">'cmucam3_half'</span>); <span class="comment">% grille qui portera la texture corrig&eacute;e en distortion (rep&egrave;re cam&eacute;ra only)</span>
+imnodisto.co.x = kLook * (-sens.F) * ones(size(imnodisto.co.y));
+imnodisto.co.y = -kLook * imnodisto.co.y;
+imnodisto.co.z = -kLook * imnodisto.co.z;
+imnodisto.ro = co2ro(imnodisto.co, cam); <span class="comment">% dans le rep&egrave;re du robot</span>
+imnodisto.abs = ro2abs(imnodisto.ro, rob); <span class="comment">% dans le rep&egrave;re du terrain</span>
+hs = surface(imnodisto.abs.x, imnodisto.abs.y, imnodisto.abs.z <span class="keyword">...</span>
+   ,<span class="string">'FaceColor'</span>,<span class="string">'texturemap'</span>, <span class="string">'cdata'</span>, double(im1)/255, <span class="string">'edgecolor'</span>,<span class="string">'none'</span>);
+</pre><img vspace="5" hspace="5" src="positionfromcamera15_04.png"> <h2>dessin de l'image (donc jpeg retourn&eacute; de 180&deg;) sur le capteur dans un plan l&eacute;g&egrave;rement arri&egrave;re au plan focal de la cam&eacute;ra<a name="7"></a></h2><pre class="codeinput">sensk2null = sens;
+sensk2null.k2 = 0;  <span class="comment">% capteur cmucam3_full sans correction de distortion</span>
+[im.co, sens] = pix2yz(surfgrid, sensk2null); <span class="comment">% grille qui portera la texture d'image brute sur le capteur</span>
+im.co.x = kLook * (-sens.F*1.2) * ones(size(im.co.y));
+im.co.y = -kLook * im.co.y;
+im.co.z = -kLook * im.co.z;
+im.ro = co2ro(im.co, cam); <span class="comment">% dans le rep&egrave;re du robot</span>
+im.abs = ro2abs(im.ro, rob); <span class="comment">% dans le rep&egrave;re du terrain</span>
+hs = surface(im.abs.x, im.abs.y, im.abs.z <span class="keyword">...</span>
+   ,<span class="string">'FaceColor'</span>,<span class="string">'texturemap'</span>, <span class="string">'cdata'</span>, double(im1)/255, <span class="string">'edgecolor'</span>,<span class="string">'none'</span>);
+</pre><img vspace="5" hspace="5" src="positionfromcamera15_05.png"> <h2>dessin de l'objet<a name="8"></a></h2>
+         <p>objco = xfyz2objco(f, imyz, ref): Conversion des points d'image en points d'objets dans le rep&egrave;re co (camera only)       
+              Ceci n&eacute;cessite des informations suppl&eacute;mentaires &agrave; choisir parmi les deux options suivantes :           - 4 points d'image
+            dont les distances entre les points d'objet correspondants sont connues.             (voir "Finding 3D Positions from 2D Images
+            Feasibility Analysis, H. G. Lochana Prematunga, ICONS 2012")           - l'appartenance des points d'objet &agrave; un plan connu
+            (dans le rep&egrave;re de la cam&eacute;ra)             utilis&eacute; ici o&ugrave; on dessinera l'objet dans le plan X=300 perpendiculaire &agrave; la cam&eacute;ra,
+            ABC=[1/300 0 0]
+         </p><pre class="codeinput"><span class="comment">% Objet constitu&eacute; de 8 points remarquables (contour coplanaire) de l'image 'distorsion en barillet.jpg'</span>
+imobj.ic = [177.4; 175.0;  89.2;  15.4;  13.5;  17.0;  89.4; 174.3];
+imobj.ir = [140.6;  16.0;   6.1;  12.5; 141.9; 268.8; 275.2; 265.6];
+imobjyz = pix2yz(imobj, <span class="string">'cmucam3_half'</span>);
+imobj.co.x = kLook * (-sens.F) * ones(size(imobjyz.y));
+imobj.co.y = -kLook * imobjyz.y;
+imobj.co.z = -kLook * imobjyz.z;
+imobj.ro = co2ro(imobj.co, cam); <span class="comment">% dans le rep&egrave;re du robot</span>
+imobj.abs = ro2abs(imobj.ro, rob); <span class="comment">% dans le rep&egrave;re du terrain</span>
+<span class="comment">% Supposer l'objet dans le plan X=300 perpendiculaire &agrave; la cam&eacute;ra</span>
+ABC = [-1/300 0 0]; <span class="comment">% Equation du plan de l'objet: A*X + B*Y + C*Z + 1 = 0</span>
+obj.co = xfyz2objco(sens.F, imobjyz, ABC);
+obj.ro = co2ro(obj.co, cam); <span class="comment">% dans le rep&egrave;re du robot</span>
+obj.abs = ro2abs(obj.ro, rob); <span class="comment">% dans le rep&egrave;re du terrain</span>
+<span class="comment">% Dessin de l'objet (8 points en principe d'un rectangle noir)</span>
+plot3(obj.abs.x([1:end 1]), obj.abs.y([1:end 1]), obj.abs.z([1:end 1]), <span class="string">'Color'</span>, <span class="string">'K'</span>, <span class="string">'linewidth'</span>, 1)
+Mgta = [1 0 1]; Red = [1 0 0]; Blue = [0 0 1]; Yell = [1 1 0];
+set(gca, <span class="string">'ColorOrder'</span>, [Mgta; Red; Red; Blue; Blue; Yell; Yell; Mgta])
+plot3([obj.abs.x obj.abs.x]', [obj.abs.y obj.abs.y]', [obj.abs.z obj.abs.z]', <span class="string">'.'</span>, <span class="string">'linewidth'</span>, 4)
+<span class="comment">% Dessin des rayons depuis ces points jusqu'&agrave; l'image dans le plan focal (pointill&eacute; noir)</span>
+plot3([obj.abs.x imobj.abs.x]', [obj.abs.y imobj.abs.y]', [obj.abs.z imobj.abs.z]', <span class="string">':'</span>, <span class="string">'linewidth'</span>, 2)
+
+
+<span class="keyword">function</span> expangdeg = rot(angdeg)
+expangdeg = exp(j*angdeg*pi/180);
+</pre><pre class="codeoutput">Error: Function definitions are not permitted at the prompt or in scripts.</pre><h2>Conversion de coordonn&eacute;es du rep&egrave;re cam&eacute;ra only vers celui du robot<a name="9"></a></h2><pre class="codeinput"><span class="keyword">function</span> objro = co2ro(objco, cam)
+<span class="comment">% IN:  objco  structure de coordonn&eacute;es de l'objet exprim&eacute; dans le rep&egrave;re de la cam&eacute;ra (cam&eacute;ra only)</span>
+<span class="comment">%           .x,.y,.z  [mm] matrices de coordonn&eacute;es des points de l'objet</span>
+<span class="comment">%                          soit de memes dim, soit l'une ou l'autre scalaire</span>
+<span class="comment">%      cam</span>
+<span class="comment">%         .z        [mm]  hauteur du centre de l'objectif de la cam&eacute;ra</span>
+<span class="comment">%         .ro  dans le syst&egrave;me de coord du robot</span>
+<span class="comment">%            .x,.y  [mm]  coordonn&eacute;es du centre de l'objectif</span>
+<span class="comment">%            .az    [&deg;]   orientation azimutale (proche de 0 si la cam&eacute;ra regarde devant, donc suivant l'axe X)</span>
+<span class="comment">%            .el    [&deg;]   orientation d'&eacute;l&eacute;vation (n&eacute;gatif car la cam&eacute;ra regarde vers le bas)</span>
+<span class="comment">%            .ah    [&deg;]   angle de l'horizon avec le bas de l'image, proche de 0</span>
+<span class="comment">%                         positif si l'horizon apparait plus haut &agrave; droite qu'&agrave; gauche sur l'image</span>
+<span class="comment">% OUT: objro  structure de coordonn&eacute;es de l'objet exprim&eacute; dans le rep&egrave;re du robot</span>
+<span class="comment">%           .x,.y,.z  [mm] matrices de coordonn&eacute;es des points de l'objet</span>
+<span class="comment">%                          de memes dim</span>
+
+hommat1 = homrot_abc2ay0([0 cosd(cam.ro.ah) sind(cam.ro.ah)]); <span class="comment">% Correction de ah: Rotation autour de l'axe X (A invariant) pour que A,B,C arrive dans le plan XY (Z=0)</span>
+hommat2 = homrot_abc2xb0([cosd(-cam.ro.el) 0 sind(-cam.ro.el)]); <span class="comment">% Correction de el: Rotation autour de l'axe Y (B invariant) pour que A,B,C arrive dans le plan XY (Z=0)</span>
+hommat3 = homrot_abc2x0c([cosd(-cam.ro.az) sind(-cam.ro.az) 0]); <span class="comment">% Correction de az: Rotation autour de l'axe Z (C invariant) pour que A,B,C arrive dans le plan XZ (Y=0)</span>
+hommat4 = homtrans([0;0;0], [cam.ro.x, cam.ro.y, cam.z]);
+hommatall = hommat4*hommat3*hommat2*hommat1; <span class="comment">% Matrice de transformation homog&egrave;ne pour passer du rep&egrave;re de la cam&eacute;ra vers celui du robot</span>
+[r,c] = size(objco.x);
+<span class="keyword">if</span> length(objco.y)&gt;1
+   [r,c] = size(objco.y);
+<span class="keyword">elseif</span> length(objco.z)&gt;1
+   [r,c] = size(objco.z);
+<span class="keyword">end</span>
+<span class="keyword">if</span> max(r,c)&gt;1
+   <span class="keyword">if</span> length(objco.x)==1
+      objco.x = objco.x * ones(r,c);
+   <span class="keyword">end</span>
+   <span class="keyword">if</span> length(objco.y)==1
+      objco.y = objco.y * ones(r,c);
+   <span class="keyword">end</span>
+   <span class="keyword">if</span> length(objco.z)==1
+      objco.z = objco.z * ones(r,c);
+   <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="keyword">if</span> r&gt;1
+   objco.x = reshape(objco.x, 1, r*c);
+   objco.y = reshape(objco.y, 1, r*c);
+   objco.z = reshape(objco.z, 1, r*c);
+<span class="keyword">end</span>
+xyzw = hommatall * [objco.x; objco.y; objco.z; ones(1,r*c)];
+objro.x = reshape(xyzw(1,:), r, c);
+objro.y = reshape(xyzw(2,:), r, c);
+objro.z = reshape(xyzw(3,:), r, c);
+</pre><h2>Conversion de coordonn&eacute;es du rep&egrave;re du robot vers celui du terrain<a name="10"></a></h2><pre class="codeinput"><span class="keyword">function</span> objabs = ro2abs(objro, rob)
+<span class="comment">% IN:  objro  structure de coordonn&eacute;es de l'objet exprim&eacute; dans le rep&egrave;re du robot</span>
+<span class="comment">%           .x,.y,.z  [mm] matrices de coordonn&eacute;es des points de l'objet</span>
+<span class="comment">%                          soit de memes dim, soit l'une ou l'autre scalaire</span>
+<span class="comment">%      rob</span>
+<span class="comment">%            .x,.y  [mm]  coordonn&eacute;es du point de r&eacute;f&eacute;rence du robot dans le rep&egrave;re du terrain</span>
+<span class="comment">%            .az    [&deg;]   orientation azimutale du robot</span>
+<span class="comment">% OUT: objabs  structure de coordonn&eacute;es de l'objet exprim&eacute; dans le rep&egrave;re du terrain</span>
+<span class="comment">%           .x,.y,.z  [mm] matrices de coordonn&eacute;es des points de l'objet</span>
+<span class="comment">%                          de memes dim</span>
+
+hommat1 = homrot_abc2x0c([cosd(-rob.az) sind(-rob.az) 0]); <span class="comment">% Correction de az: Rotation autour de l'axe Z (C invariant) pour que A,B,C arrive dans le plan XZ (Y=0)</span>
+hommat2 = homtrans([0;0;0], [rob.x, rob.y, 0]);
+hommatall = hommat2*hommat1; <span class="comment">% Matrice de transformation homog&egrave;ne pour passer du rep&egrave;re de la cam&eacute;ra vers celui du robot</span>
+[r,c] = size(objro.x);
+<span class="keyword">if</span> length(objro.y)&gt;1
+   [r,c] = size(objro.y);
+<span class="keyword">elseif</span> length(objro.z)&gt;1
+   [r,c] = size(objro.z);
+<span class="keyword">end</span>
+<span class="keyword">if</span> max(r,c)&gt;1
+   <span class="keyword">if</span> length(objro.x)==1
+      objro.x = objro.x * ones(r,c);
+   <span class="keyword">end</span>
+   <span class="keyword">if</span> length(objro.y)==1
+      objro.y = objro.y * ones(r,c);
+   <span class="keyword">end</span>
+   <span class="keyword">if</span> length(objro.z)==1
+      objro.z = objro.z * ones(r,c);
+   <span class="keyword">end</span>
+<span class="keyword">end</span>
+<span class="keyword">if</span> r&gt;1
+   objro.x = reshape(objro.x, 1, r*c);
+   objro.y = reshape(objro.y, 1, r*c);
+   objro.z = reshape(objro.z, 1, r*c);
+<span class="keyword">end</span>
+xyzw = hommatall * [objro.x; objro.y; objro.z; ones(1,r*c)];
+objabs.x = reshape(xyzw(1,:), r, c);
+objabs.y = reshape(xyzw(2,:), r, c);
+objabs.z = reshape(xyzw(3,:), r, c);
+</pre><p class="footer"><br>
+            Published with MATLAB&reg; 7.3<br></p>
+      </div>
+      <!--
+##### SOURCE BEGIN #####
+%% function positionfromcamera15()
+
+%% Introduction
+
+% Détection de position par caméra embarquée
+% F. Gueuning, 2010-2015   Unité Electronique et informatique         ECAM, Bruxelles
+%
+% SPc 150314: positioncamera3 + en 3d: dessin du capteur, de l'image corrigée en distortion (en plan focal) et objet
+% SPn 130211: création depuis positionfromcamera2, découpage en plusieurs fonctions
+% SPn 130210: corrections orthographiques
+% SPn 120323: distinction cr, ch, co plutot que ca + correction formule MAIS RESTE PROBLEME DE SOMME az ET SOMME el !
+% SPn 120301: function avec pix, co, dis
+% SPn 120220: Dessin des systèmes d'axes et calcul de distorsion
+% SPn 110404: Premières réflexions
+%
+% Les fonctions suivantes sont successivement appelées :
+% imyz = pix2yz(trg, sens): Conversion des pixels en coordonnées de points images (en mm) dans le plan du capteur
+%                           et dans le repère de la caméra non redressé (co: camera only)
+% objco = xfyz2objco(f, imyz, ref): Conversion des points d'image en points d'objets dans le repère co (camera only)
+%          Ceci nécessite des informations supplémentaires à choisir parmi les deux options suivantes :
+%           - 4 points d'image dont les distances entre les points d'objet correspondants sont connues.
+%             (voir "Finding 3D Positions from 2D Images Feasibility Analysis, H. G. Lochana Prematunga, ICONS 2012")
+%           - l'appartenance des points d'objet à un plan connu
+% co2ro    Conversion du repère co vers coordonnées dans le repère ro du robot
+% ro2abs   Conversion du repère ro vers coordonnées dans le repère du terrain
+% 
+% IN:  pix    structure des pixels à traiter
+%         .r indices des lignes (rangées)
+%      coord  structure de coordonnées de robot et caméra
+%      sens   structure de caractéristiques du capteur
+% On a
+%  - 4 systèmes de coordonnées : robot (ro), caméra redressée (ca), image (im), absolu ()
+%  - une cible (target, tar) ou une balise (beacon, bea) visibles sur une image
+%  - les coordonnées x, y, z, r, az, el, ah
+%  - indices de rangée (ir) et de colonne (ic) d'un point sur l'image
+% 
+%  Caméra :
+%  cam.z      Hauteur du centre de l'objectif de la caméra
+%  cam.ro.x,.y  Coordonnées du centre de l'objectif dans le système de coord du robot
+%        .az  Orientation azimutale (proche de 0 si la caméra regarde devant, donc suivant l'axe X
+%        .el  Orientation d'élévation (négatif car la caméra regarde vers le bas)
+%        .ah  Angle de l'horizon avec le bas de l'image, proche de 0°
+%             Positif si l'horizon apparait plus haut à droite qu'à gauche sur l'image
+%        Lors du calcul des coordonnées de cibles et balises exprimées dans le repère redressé de la
+%        caméra (cr), on a neutralisé az, el et ah de la caméra. Le repère (cr) est donc
+%        simplement une translation du repère (ro) valant cam.ro.x,.y,.z
+%  Robot :
+%  rob.x, .y   coord absolues du robot
+%     .az      orientation azimutale du robot sur le terrain
+% 
+%  Cible (target) :
+%  tar.im.ir      indice de rangée du point d'image de la cible (target)
+%        .ic                colonne
+%        .y, .z   coord y et z du point au niveau de l'image après correction de distortion et
+%                 redressement compensant cam.ro.ah
+%     .cr.az      azimut    de la cible dans le repère redressé de la caméra (donc orienté comme le robot)
+%        .el      élévation de la cible telle que perçue depuis le repère redressé de la caméra
+%     .ro.r       distance entre cible et origine du robot
+%        .az      azimut de la cible en coord du robot
+%     .x          coord de la cible dans un repère absolu (repère du terrain)
+%     .y
+%     .z
+%     
+%  Balise (beacon) :
+%  bea...         similaire à tar mais pour une balise (beacon)
+%                 on connait les coordonnées tar.x,.y,.z des balises
+%  
+% - On suppose connus les 6 paramètres de position de la caméra dans le système de coord du robot :
+%     cam.ro.x, .y, .z, .az, .el, .ah
+% - A partir des coordonnées d'un point tar.im.ir,.ic de l'image, on peut déduire les coord
+%   correspondantes tar.cr.az,.el de la cible.
+%    - D'abord calculer tar.im.y et tar.im.z (à exprimer en mm en supposant nulles au centre de l'image)
+%      Pour la cmucam3, si on se réfère aux mesures de distorsion réalisées en 2010, extrait de polymais.m :
+%         % distorsion en barillet dans le cas où on veut simuler le comportement de la caméra
+%         %  521e-6 a été déterminé expérimentalement 100328 avec les étudiants de 4MEO:
+%         %    un carreau de 32 pixels au centre devient 27 pixels à 150 pixels du centre  100328
+%         %    dérivée au centre: 32/32,  à 150 pixels: 27/32 = 1-2*a*150 => a = 521e-6
+%         PImYZ = PIm(i).Y + j*PIm(i).Z;
+%         PImYZ = abs(PImYZ).*(1-521e-6*abs(PImYZ)).*exp(j*angle(PImYZ));
+%         PIm(i).Y = real(PImYZ)*8.2/9; % le nombre d'unités en largeur est à diminuer car plus larges
+%      Dans notre cas, ce sont les opérations inverses qu'il faut faire puisqu'on doit corriger une image
+%      prise par la caméra
+%      Exemple :
+       im0 = imread('distorsion en barillet.jpg');
+       % Ajout d'un contour noir à l'image (utile uniquement ici pour son affichage, sinon à éviter)
+       [r,c,p]=size(im0);
+       bord=4; % pixels
+       im1 = uint8(zeros(r+2*bord, c+2*bord, p));
+       im1(bord+1:end-bord, bord+1:end-bord, :) = im0;
+       [r,c,p]=size(im1);
+       XY = 2*ones(r+1,1)*(0:c)*9/8.2 + j*(0:r)'*ones(1,c+1); M=mean(mean(XY));
+       k=1; PImYZ{k} = XY;
+       k=2; PImYZ{k} = M + abs(XY-M).*(1+521e-6*abs(XY-M)).*exp(j*angle(XY-M));
+       k=3; PImYZ{k} = M + abs(XY-M).*(1+50e-6*abs(XY-M).^1.5).*exp(j*angle(XY-M));
+       k=4; PImYZ{k} = M + abs(XY-M).*(1+700e-6*abs(XY-M)).*exp(j*angle(XY-M));
+       Tit = {'original' '521e-6                          ' '50e-6 et \^1.5' '                    700e-6'};
+       Col = [0 0 0; 0 .5 0; 1 0 0; 0 0 1];
+       for k= []; %[1 4]
+          figure
+          plot([-50 450],[-50 350], '.k'), hold on
+          hs = surf(real(PImYZ{k}), imag(PImYZ{k}), zeros(r+1,c+1), double(im1)/255, 'edgecolor','none');
+          hold off
+          title(Tit{k}, 'Color', Col(k,:))
+          view(0,90)
+          set(gca, 'DataAspectRatio', [1 1 1])
+          pause(.5)
+       end
+%      Ne pas oublier de neutraliser l'effet de cam.ro.ah
+%      
+%    - Puis tenir compte de cam.F (distance focale de la caméra) pour calculer tar.cr.az et tar.cr.el
+%      tar.cr.az = atan(tar.im.y/cam.F)+cam.ro.az;  % cam.F négatif RELATION INCORRECTE, SOMME VALABLE UNIQUEMENT SI AXE OPTIQUE HORIZONTAL
+%      tar.cr.el = atan(tar.im.z/(cam.F/cos(tar.cr.az)))+cam.ro.el; % correction 120323  SOMME INCORRECTE
+
+% - Comment déduire tar.ro.r,.az à partir de tar.cr.az,.el et tar.z ?
+%   Si cam.ro.x=0 et cam.ro.y=0  alors on a directement  tar.ro.az=tar.cr.az
+%   Sinon il faut par exemple que tar.cr.el soit non nulle pour déduire  tar.ro.r,.az
+%   ce qui nécessite que caméra et cible ne soient pas à la même hauteur :
+%      tar.cr.r = (cam.z-tar.z)*tan(tar.cr.el)
+%   Autre possibilité : se baser sur la taille de l'image de la cible (fonction de son éloignement).
+% - Comment déterminer l'orientation rob.az et la position rob.x,.y du robot sur le terrain ?
+%   CECI EST EN GESTATION, IL FAUDRAIT VOIR DES IMAGES POUR SE FAIRE UNE IDEE
+%   Pour une balise, si on peut déduire bea.ro.r,.az comme pour une cible, 2 balises suffisent pour
+%   connaitre la position (ainsi que l'orientation) du robot, sinon il faut 3 balises.
+%   On peut aussi se baser sur 2 images à des positions différentes et se contenter de 2 balises : si on
+%   sait qu'on a avancé en ligne droite d'une distance D entre les 2 images, avec les 2 azimuts, on a une
+%   information similaire à bea.ro.r,.az
+%   Autre possibilité : tenir compte de l'orientation du bord du terrain sur l'image
+
+% Dessin des systèmes de coordonnées
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+
+%% Initialisation des coordonnées de la caméra et du robot
+cam.z = 300; % [mm] hauteur du centre de l'objectif de la caméra
+cam.ro.x = -50;
+cam.ro.y = 100; % [mm] coordonnées du centre de l'objectif dans le système de coord du robot
+cam.ro.az = 15; % [°] orientation azimutale (proche de 0 si la caméra regarde devant, donc suivant l'axe X
+cam.ro.el = -30; % [°] orientation d'élévation (négatif car la caméra regarde vers le bas)
+cam.ro.ah = 0; % [°] angle de l'horizon avec le bas de l'image, proche de 0
+               % positif si l'horizon apparait plus haut à droite qu'à gauche sur l'image
+rob.x = 240;
+rob.y = 250; % [mm] coord absolues du robot
+rob.az = 40; % [°] orientation azimutale du robot sur le terrain
+roxy = rob.x + j*rob.y; % robot
+
+%% Dessin des axes principaux
+figure
+plot3([0 0 0; 600 0 0], [0 0 0; 0 600 0], [0 0 0; 0 0 400], 'k'), set(gca, 'DataAspectRatio', [1 1 1])
+view(-10.5, 26)
+view(36.5, 24)
+hold on
+
+%% Dessin des coordonnées du robot
+cosraz = cos(rob.az*pi/180);
+sinraz = sin(rob.az*pi/180);
+plot3([0 0; rob.x 0], [0 0; 0 rob.y], [0 0; 0 0], 'Color', [0 .5 0], 'linewidth', 2) % Lignes sur axes
+plot3(rob.x*[0 1; 2 1], rob.y*[1 0; 1 1], [0 0; 0 0], ':', 'Color', [0 .5 0]) % pointillés ...
+plot3(rob.x+[0; 300*cosraz], rob.y+[0; 300*sinraz], [0; 0], '-.', 'Color', [0 .5 0], 'linewidth', 2) % trait d'axe .-.-.
+text(rob.x, -110, 0, ['rob.x = ' num2str(rob.x)],'HorizontalAlignment', 'Center', 'Color', [0 .5 0], 'FontWeight', 'Bold')
+text(-80, rob.y, 0, ['rob.y = ' num2str(rob.y)],'HorizontalAlignment', 'Center', 'Color', [0 .5 0], 'FontWeight', 'Bold')
+plo = roxy + .7*rob.x*rot((0:abs(rob.az))*sign(rob.az)); % pour dessin d'angle rob.az
+plot3(real(plo), imag(plo), zeros(size(plo)), 'Color', [0 .5 0])
+text(1.7*rob.x, 1.3*rob.y, 0, ['rob.az = ' num2str(rob.az) '°'], 'Color', [0 .5 0], 'FontWeight', 'Bold')
+
+%% Dessin des coordonnées de la caméra (sur le robot)
+camroxy = cam.ro.x + j*cam.ro.y;
+camxy = camroxy*rot(rob.az);
+plo = roxy + [0 0 camroxy; cam.ro.x j*cam.ro.y camroxy]*rot(rob.az); % Pour lignes sur axes
+plot3(real(plo), imag(plo), [0 0 0; 0 0 cam.z], 'Color', 'B', 'linewidth', 2)
+plo = roxy + [cam.ro.x j*cam.ro.y camroxy; camroxy+[0 0 300]]*rot(rob.az); % Pour pointillés ...
+plot3(real(plo), imag(plo), [0 0 cam.z; 0 0 cam.z], 'Color', 'B',  'LineStyle', ':')
+plo = roxy + camxy + [0; 300*rot(rob.az+cam.ro.az)]; % Pour  trait d'axe .-.-.
+plot3(real(plo), imag(plo), ones(size(plo))*cam.z, 'Color', 'B',  'LineStyle', '-')
+plo = roxy -80j; % Pour texte cam.ro.x
+text(real(plo), imag(plo), 0, ['cam.ro.x = ' num2str(cam.ro.x)], 'Color', 'B', 'FontWeight', 'Bold')
+plo = roxy +80j; % Pour texte cam.ro.y
+text(real(plo), imag(plo), 0, ['cam.ro.y = ' num2str(cam.ro.y)], 'Color', 'B', 'FontWeight', 'Bold')
+plo = roxy+camxy + 10; % Pour texte cam.z
+text(real(plo), imag(plo), .7*cam.z, ['cam.z = ' num2str(cam.z)], 'Color', 'B', 'FontWeight', 'Bold')
+plo = roxy+camxy + 200*rot(rob.az+((0:abs(cam.ro.az))*sign(cam.ro.az))); % pour dessin d'angle cam.ro.az
+plot3(real(plo), imag(plo), ones(size(plo))*cam.z, 'Color', 'B')
+plo = roxy+camxy + 260*rot(rob.az+cam.ro.az/2); % pour texte cam.ro.az
+text(real(plo), imag(plo), cam.z, ['cam.ro.az = ' num2str(cam.ro.az) '°'], 'Color', 'B', 'FontWeight', 'Bold')
+plo = roxy + camxy + [-80; 300]*rot(rob.az+cam.ro.az)*cosd(cam.ro.el); % Pour  trait d'axe optique .-.-.
+plot3(real(plo), imag(plo), cam.z+[-80; 300]*sind(cam.ro.el), 'Color', 'R',  'LineStyle', '-.', 'linewidth', 2)
+plo = roxy+camxy + 200*rot(rob.az+cam.ro.az)*cosd(0:abs(cam.ro.el)); % pour dessin d'angle cam.ro.el
+plot3(real(plo), imag(plo), cam.z+200*sind(0:abs(cam.ro.el))*sign(cam.ro.el), 'Color', 'R')
+plo = roxy+camxy + 260*rot(rob.az+cam.ro.az)*cosd(cam.ro.el/2); % pour texte cam.ro.el
+text(real(plo), imag(plo), cam.z+200*sind(cam.ro.el/2)-10, ['cam.ro.el = ' num2str(cam.ro.el) '°'], 'Color', 'R', 'FontWeight', 'Bold')
+
+nG = 18; % taille de grille surface: 18x18 Attention! semble produire des erreurs au-delà de 18 !? (surface ne donne plus des rectangles)
+surfgrid.ir = (1:(r-1)/(nG-1):r)'*ones(1,nG); % Grille nGxnG de surface, indices de rangées, valeurs extremes: [1;r]
+surfgrid.ic = ones(nG,1) * (1:(c-1)/(nG-1):c); % Grille nGxnG surface, indices de colonnes, valeurs extremes: [1 c]
+kLook = 10; % multiplieur pour le dessin du capteur pour qu'il soit plus loin du centre optique et plus grand 
+
+
+%% dessin de l'image (donc jpeg retourné de 180°) corrigée en distortion dans le plan focal
+[imnodisto.co, sens] = pix2yz(surfgrid, 'cmucam3_half'); % grille qui portera la texture corrigée en distortion (repère caméra only)
+imnodisto.co.x = kLook * (-sens.F) * ones(size(imnodisto.co.y));
+imnodisto.co.y = -kLook * imnodisto.co.y;
+imnodisto.co.z = -kLook * imnodisto.co.z;
+imnodisto.ro = co2ro(imnodisto.co, cam); % dans le repère du robot
+imnodisto.abs = ro2abs(imnodisto.ro, rob); % dans le repère du terrain
+hs = surface(imnodisto.abs.x, imnodisto.abs.y, imnodisto.abs.z ...
+   ,'FaceColor','texturemap', 'cdata', double(im1)/255, 'edgecolor','none');
+
+%% dessin de l'image (donc jpeg retourné de 180°) sur le capteur dans un plan légèrement arrière au plan focal de la caméra
+sensk2null = sens;
+sensk2null.k2 = 0;  % capteur cmucam3_full sans correction de distortion
+[im.co, sens] = pix2yz(surfgrid, sensk2null); % grille qui portera la texture d'image brute sur le capteur
+im.co.x = kLook * (-sens.F*1.2) * ones(size(im.co.y));
+im.co.y = -kLook * im.co.y;
+im.co.z = -kLook * im.co.z;
+im.ro = co2ro(im.co, cam); % dans le repère du robot
+im.abs = ro2abs(im.ro, rob); % dans le repère du terrain
+hs = surface(im.abs.x, im.abs.y, im.abs.z ...
+   ,'FaceColor','texturemap', 'cdata', double(im1)/255, 'edgecolor','none');
+
+%% dessin de l'objet
+% objco = xfyz2objco(f, imyz, ref): Conversion des points d'image en points d'objets dans le repère co (camera only)
+%          Ceci nécessite des informations supplémentaires à choisir parmi les deux options suivantes :
+%           - 4 points d'image dont les distances entre les points d'objet correspondants sont connues.
+%             (voir "Finding 3D Positions from 2D Images Feasibility Analysis, H. G. Lochana Prematunga, ICONS 2012")
+%           - l'appartenance des points d'objet à un plan connu (dans le repère de la caméra)
+%             utilisé ici où on dessinera l'objet dans le plan X=300 perpendiculaire à la caméra, ABC=[1/300 0 0]
+
+% Objet constitué de 8 points remarquables (contour coplanaire) de l'image 'distorsion en barillet.jpg' 
+imobj.ic = [177.4; 175.0;  89.2;  15.4;  13.5;  17.0;  89.4; 174.3];
+imobj.ir = [140.6;  16.0;   6.1;  12.5; 141.9; 268.8; 275.2; 265.6];
+imobjyz = pix2yz(imobj, 'cmucam3_half');
+imobj.co.x = kLook * (-sens.F) * ones(size(imobjyz.y));
+imobj.co.y = -kLook * imobjyz.y;
+imobj.co.z = -kLook * imobjyz.z;
+imobj.ro = co2ro(imobj.co, cam); % dans le repère du robot
+imobj.abs = ro2abs(imobj.ro, rob); % dans le repère du terrain
+% Supposer l'objet dans le plan X=300 perpendiculaire à la caméra
+ABC = [-1/300 0 0]; % Equation du plan de l'objet: A*X + B*Y + C*Z + 1 = 0
+obj.co = xfyz2objco(sens.F, imobjyz, ABC);
+obj.ro = co2ro(obj.co, cam); % dans le repère du robot
+obj.abs = ro2abs(obj.ro, rob); % dans le repère du terrain
+% Dessin de l'objet (8 points en principe d'un rectangle noir)
+plot3(obj.abs.x([1:end 1]), obj.abs.y([1:end 1]), obj.abs.z([1:end 1]), 'Color', 'K', 'linewidth', 1)
+Mgta = [1 0 1]; Red = [1 0 0]; Blue = [0 0 1]; Yell = [1 1 0];
+set(gca, 'ColorOrder', [Mgta; Red; Red; Blue; Blue; Yell; Yell; Mgta])
+plot3([obj.abs.x obj.abs.x]', [obj.abs.y obj.abs.y]', [obj.abs.z obj.abs.z]', '.', 'linewidth', 4)
+% Dessin des rayons depuis ces points jusqu'à l'image dans le plan focal (pointillé noir)
+plot3([obj.abs.x imobj.abs.x]', [obj.abs.y imobj.abs.y]', [obj.abs.z imobj.abs.z]', ':', 'linewidth', 2)
+
+
+function expangdeg = rot(angdeg)
+expangdeg = exp(j*angdeg*pi/180);
+
+%% Conversion de coordonnées du repère caméra only vers celui du robot
+function objro = co2ro(objco, cam) 
+% IN:  objco  structure de coordonnées de l'objet exprimé dans le repère de la caméra (caméra only)
+%           .x,.y,.z  [mm] matrices de coordonnées des points de l'objet
+%                          soit de memes dim, soit l'une ou l'autre scalaire
+%      cam
+%         .z        [mm]  hauteur du centre de l'objectif de la caméra
+%         .ro  dans le système de coord du robot
+%            .x,.y  [mm]  coordonnées du centre de l'objectif
+%            .az    [°]   orientation azimutale (proche de 0 si la caméra regarde devant, donc suivant l'axe X)
+%            .el    [°]   orientation d'élévation (négatif car la caméra regarde vers le bas)
+%            .ah    [°]   angle de l'horizon avec le bas de l'image, proche de 0
+%                         positif si l'horizon apparait plus haut à droite qu'à gauche sur l'image
+% OUT: objro  structure de coordonnées de l'objet exprimé dans le repère du robot
+%           .x,.y,.z  [mm] matrices de coordonnées des points de l'objet
+%                          de memes dim
+
+hommat1 = homrot_abc2ay0([0 cosd(cam.ro.ah) sind(cam.ro.ah)]); % Correction de ah: Rotation autour de l'axe X (A invariant) pour que A,B,C arrive dans le plan XY (Z=0)
+hommat2 = homrot_abc2xb0([cosd(-cam.ro.el) 0 sind(-cam.ro.el)]); % Correction de el: Rotation autour de l'axe Y (B invariant) pour que A,B,C arrive dans le plan XY (Z=0)
+hommat3 = homrot_abc2x0c([cosd(-cam.ro.az) sind(-cam.ro.az) 0]); % Correction de az: Rotation autour de l'axe Z (C invariant) pour que A,B,C arrive dans le plan XZ (Y=0)
+hommat4 = homtrans([0;0;0], [cam.ro.x, cam.ro.y, cam.z]);
+hommatall = hommat4*hommat3*hommat2*hommat1; % Matrice de transformation homogène pour passer du repère de la caméra vers celui du robot
+[r,c] = size(objco.x);
+if length(objco.y)>1
+   [r,c] = size(objco.y);
+elseif length(objco.z)>1
+   [r,c] = size(objco.z);
+end
+if max(r,c)>1
+   if length(objco.x)==1
+      objco.x = objco.x * ones(r,c);
+   end
+   if length(objco.y)==1
+      objco.y = objco.y * ones(r,c);
+   end
+   if length(objco.z)==1
+      objco.z = objco.z * ones(r,c);
+   end
+end
+if r>1
+   objco.x = reshape(objco.x, 1, r*c);
+   objco.y = reshape(objco.y, 1, r*c);
+   objco.z = reshape(objco.z, 1, r*c);
+end
+xyzw = hommatall * [objco.x; objco.y; objco.z; ones(1,r*c)];
+objro.x = reshape(xyzw(1,:), r, c);
+objro.y = reshape(xyzw(2,:), r, c);
+objro.z = reshape(xyzw(3,:), r, c);
+
+%% Conversion de coordonnées du repère du robot vers celui du terrain
+function objabs = ro2abs(objro, rob) 
+% IN:  objro  structure de coordonnées de l'objet exprimé dans le repère du robot
+%           .x,.y,.z  [mm] matrices de coordonnées des points de l'objet
+%                          soit de memes dim, soit l'une ou l'autre scalaire
+%      rob
+%            .x,.y  [mm]  coordonnées du point de référence du robot dans le repère du terrain
+%            .az    [°]   orientation azimutale du robot
+% OUT: objabs  structure de coordonnées de l'objet exprimé dans le repère du terrain
+%           .x,.y,.z  [mm] matrices de coordonnées des points de l'objet
+%                          de memes dim
+
+hommat1 = homrot_abc2x0c([cosd(-rob.az) sind(-rob.az) 0]); % Correction de az: Rotation autour de l'axe Z (C invariant) pour que A,B,C arrive dans le plan XZ (Y=0)
+hommat2 = homtrans([0;0;0], [rob.x, rob.y, 0]);
+hommatall = hommat2*hommat1; % Matrice de transformation homogène pour passer du repère de la caméra vers celui du robot
+[r,c] = size(objro.x);
+if length(objro.y)>1
+   [r,c] = size(objro.y);
+elseif length(objro.z)>1
+   [r,c] = size(objro.z);
+end
+if max(r,c)>1
+   if length(objro.x)==1
+      objro.x = objro.x * ones(r,c);
+   end
+   if length(objro.y)==1
+      objro.y = objro.y * ones(r,c);
+   end
+   if length(objro.z)==1
+      objro.z = objro.z * ones(r,c);
+   end
+end
+if r>1
+   objro.x = reshape(objro.x, 1, r*c);
+   objro.y = reshape(objro.y, 1, r*c);
+   objro.z = reshape(objro.z, 1, r*c);
+end
+xyzw = hommatall * [objro.x; objro.y; objro.z; ones(1,r*c)];
+objabs.x = reshape(xyzw(1,:), r, c);
+objabs.y = reshape(xyzw(2,:), r, c);
+objabs.z = reshape(xyzw(3,:), r, c);
+
+##### SOURCE END #####
+-->
+   </body>
+</html>
