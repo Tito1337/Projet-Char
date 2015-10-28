@@ -1,0 +1,151 @@
+function [imyz, sens] = pix2yz(im, sens)
+% Coordonnées yz de points image dans le plan du capteur après correction de distorsion
+% yz est exprimé dans le repère non redressé de la caméra (co: camera only)
+% F. Gueuning, 2012-2013        Unité Electronique et informatique         ECAM, Bruxelles
+%
+% SPn 130224: sens.dc0, sens.dr0 Offset de centre optique du capteur exprimé en colonne et rangée de pixel
+% SPn 130222: Modification de repère : les coord yz capteur subissent une symétrie centrale par rapport au centre optique pour x>0
+% SPn 130220: cmax, rmax fields de sens
+% SPn 130211: Création à partir de pix2trg
+%
+% IN:  im     Structure des pixels à traiter
+%        .ir    Scalaire ou matrice d'indices des lignes (rangées) des pixels à traiter
+%        .ic    Scalaire ou matrice d'indices des colonnes de dim compatibles avec celles de .ir
+%      sens   Soit structure de caractéristiques du capteur, soit string indiquant un capteur connu (def: 'cmucam3_full')
+%          .W   Largeur (col) d'un pixel [mm]
+%          .H   hauteur (row) d'un pixel [mm]
+%          .F   distance focale (négative) [mm]
+%          .k2  coefficient pour correction de distortion, 0 pour aucune correction
+%               Calcul: abs.*(1+k2*abs)
+%          .rmax  Nombre de rangées de l'image, on suppose axe optique au centre
+%          .cmax  idem pour le nombre de colonnes de l'image
+%          'picam_2592x1944'
+%             Because the focal length of the lens is roughly the same as the width of the sensor,
+%             it is easy to remember the field of view: at x meters away, you can see about x meters horizontally,
+%             assuming 4x3 stills mode. Horizontal field of view in 1080p video mode is 75% of that
+%             (75% H x 55% V sensor crop for 1:1 pixels at 1920x1080).
+%             Sensor size: 3.67 x 2.74 mm
+%             Pixel Count: 2592 x 1944
+%             Pixel Size: 1.4 x 1.4 um
+%             Lens: f=3.6 mm, f/2.9
+%             Angle of View: 54 x 41 degrees
+%            .W = 1.4e-3  Largeur (col) d'un pixel [mm]
+%            .H = 1.4e-3  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 2592
+%            .rmax = 1944
+%          'picam_768x512'
+%            .W = 1.4e-3*3.3750  Largeur (col) d'un pixel [mm] (assuming no crop, needs to verify)
+%            .H = 1.4e-3*3.7969  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 768
+%            .rmax = 512
+%          'picam_384x256'
+%            .W = 1.4e-3*6.7500  Largeur (col) d'un pixel [mm] (assuming no crop, needs to verify)
+%            .H = 1.4e-3*7.5938  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 384
+%            .rmax = 256
+%          'cmucam3_full'  Pour images provenant de la cmucam3 en 352x287 pixels, équivalent à
+%            .W = 9e-3    Largeur (col) d'un pixel [mm]
+%            .H = 8.2e-3  Hauteur (row) d'un pixel [mm]
+%            .F = 3.7     Distance focale [mm]
+%                         Une boule de 69 mm de diamètre située à 437 mm de la caméra présente un diamètre
+%                         de 65 pix (* 9µm) de large et de 71 pix (* 8.2µm) de haut,
+%                         soit une image de 583µm de diamètre, ce qui indique une focale de 437/69*0.583 = 3.7mm
+%            .k2 = 85.4e-3 Coefficient pour correction de distortion, 0 pour aucune correction (120326 old value: 700e-6)
+%            .cmax = 352
+%            .rmax = 287
+%          'cmucam3_half'  Pour images provenant de la cmucam3 en 176x287 pixels
+%            .W = 18e-3   Largeur (col) d'un pixel [mm]
+%            .H =  8.2e-3 Hauteur (row) d'un pixel [mm]
+%            .F =  3.7    Distance focale [mm]
+%            .k2 = 85.4e-3 Coefficient pour correction de distortion, 0 pour aucune correction (120326 old value: 700e-6)
+%            .cmax = 176
+%            .rmax = 287
+%          'samsung9000'  Pour Samsung i9000 Galaxy S (2560x1920)
+%                         F-Stop/Aperture 2.6,  Focal Length 3.79 mm,  Focus Range 120 cm
+%            .W = 1.12e-3 Largeur (col) d'un pixel [mm]
+%            .H = 1.12e-3 Hauteur (row) d'un pixel [mm]
+%            .F = 2.87   Distance focale [mm]  Pour moi, la focale correspond à peu près à la largeur du capteur (soit 1.12µm*2560)
+%            .k2 = 0      En supposant pas de distorsion (mais en fait il y en a un peu)
+%            .cmax = 2560
+%            .rmax = 1920
+% OUT: imyz  Structure dont .y, .z sont de dim compatible avec trg.im.ir et trg.im.ic
+%            Coordonnées des points images (en mm) dans le plan du capteur et dans le repère de la caméra non redressé (co: camera only)
+%            Un point haut sur l'image (faible rangée) correspond pour l'objet à un Z positif, donc z POSITIF sur le capteur (130222)
+%            Un point à gauche sur l'image (faible colonne) correspond pour l'objet à un Y positif, donc y POSITIF sur le capteur (130222)
+%      sens  Structure correspondant au sens fourni en entrée
+
+if nargin<2
+    sens = 'cmucam3_full';
+end
+
+if ischar(sens) && strcmpi(sens, 'picam_2592x1944')
+   sens = struct('W', 1.4e-3, 'H', 1.4e-3, 'F', 3.6, 'k2', 0e-3, 'cmax', 2592, 'rmax', 1944, 'dc0', 0, 'dr0', 0);
+elseif ischar(sens) && strcmpi(sens, 'picam_768x512')
+   sens = struct('W', 1.4e-3*3.3750, 'H', 1.4e-3*3.7969, 'F', 3.6, 'k2', 0e-3, 'cmax', 768, 'rmax', 512, 'dc0', 0, 'dr0', 0);
+elseif ischar(sens) && strcmpi(sens, 'picam_384x256')
+   sens = struct('W', 1.4e-3*6.7500, 'H', 1.4e-3*7.5938, 'F', 3.6, 'k2', 0e-3, 'cmax', 384, 'rmax', 256, 'dc0', 0, 'dr0', 0);
+%             Sensor size: 3.67 x 2.74 mm
+%             Pixel Count: 2592 x 1944
+%             Pixel Size: 1.4 x 1.4 um
+%             Lens: f=3.6 mm, f/2.9
+%             Angle of View: 54 x 41 degrees
+%            .W = 1.4e-3  Largeur (col) d'un pixel [mm]
+%            .H = 1.4e-3  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 2592
+%            .rmax = 1944
+%          'picam_768x512'
+%            .W = 1.4e-3*3.3750  Largeur (col) d'un pixel [mm] (assuming no crop, needs to verify)
+%            .H = 1.4e-3*3.7969  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 768
+%            .rmax = 512
+%          'picam_384x256'
+%            .W = 1.4e-3*6.7500  Largeur (col) d'un pixel [mm] (assuming no crop, needs to verify)
+%            .H = 1.4e-3*7.5938  Hauteur (row) d'un pixel [mm]
+%            .F = 3.6     Distance focale [mm]
+%            .k2 = 00.e-3 Coefficient pour correction de distortion, 0 pour aucune correction
+%            .cmax = 384
+%            .rmax = 256
+
+
+elseif ischar(sens) && strcmpi(sens, 'cmucam3_full')
+   % Pour images provenant de la cmucam3 en 352x287 pixels, équivalent à
+%X120326   sens = struct('W', 9e-3, 'H', 8.2e-3, 'F', -3.7, 'k2', 700e-6);
+%X130222   sens = struct('W', 9e-3, 'H', 8.2e-3, 'F', -3.7, 'k2', 85.4e-3, 'cmax', 352, 'rmax', 287);
+   % Optimisé pour minimiser (manuellement) écart-type d'erreur dans camera2013.m à partir d'image de cmucam à fils vert et blanc (130224):
+   % Note: l'écart-type est passé de 5.8mm à 1.2673mm
+   %130226:tenté mais accroit l'erreur de position sens = struct('W', 9e-3, 'H', 8.2e-3, 'F', 3.6826/271.0876*277, 'k2', 85e-3, 'cmax', 352, 'rmax', 287, 'dc0', -11.68, 'dr0', 1);
+   %       En fait, sur le robot, le centre de la lentille est à cam.z=285 et cam.ro.y=75 mais l'étalonnage donne cam.z=275 et cam.ro.y=67.2 !?
+   %       Ce n'est pas dramatique, on a quand même une indication assez bonne de la position des objets sur le terrain et c'est ça le plus important
+   %       et surtout le plus urgent. Donc admettons temporairement cet écart et vérifions que la position des objets sur le terrain est
+   %       valablement identifiée. Il faut améliorer le dessin de référence en conséquence et tenter de détecter les lignes automatiquement.
+   sens = struct('W', 9e-3, 'H', 8.2e-3, 'F', 3.6826, 'k2', 85e-3, 'cmax', 352, 'rmax', 287, 'dc0', -11.68, 'dr0', 1);
+elseif ischar(sens) && strcmpi(sens, 'cmucam3_half')
+   % Pour images provenant de la cmucam3 en 176x287 pixels
+%X120326   sens = struct('W', 18e-3, 'H', 8.2e-3, 'F', -3.7, 'k2', 700e-6);
+%X130222   sens = struct('W', 18e-3, 'H', 8.2e-3, 'F', -3.7, 'k2', 85.4e-3, 'cmax', 176, 'rmax', 287);
+   sens = struct('W', 18e-3, 'H', 8.2e-3, 'F', 3.7, 'k2', 85.4e-3, 'cmax', 176, 'rmax', 287, 'dc0', -5.85, 'dr0', 1);
+elseif ischar(sens) && strcmpi(sens, 'samsung9000')
+   % Pour images provenant du Samsung Galaxy S i9000 en 2560x1920 pixels
+%X130222   sens = struct('W', 1.12e-3, 'H', 1.12e-3, 'F', -2.87, 'k2', 0e-3, 'cmax', 2560, 'rmax', 1920);
+   sens = struct('W', 1.12e-3, 'H', 1.12e-3, 'F', 2.87, 'k2', 0e-3, 'cmax', 2560, 'rmax', 1920, 'dc0', 0, 'dr0', 0);
+elseif ischar(sens)
+   disp('Error: Pour sens, nom de capteur non reconnu')
+   brol
+end
+
+% Points cibles en tenant compte des dimensions des pixels et de la distortion
+C = (im.ic-double(sens.cmax)/2-sens.dc0)*sens.W + j*(im.ir-double(sens.rmax)/2-sens.dr0)*sens.H;
+C = abs(C) .* (1 + sens.k2 * abs(C)) .* exp(j*angle(C));
+yz = -C; % Sur capteur, comme sur image où positif à gauche (suivant axe Y) et au-dessus (suivant axe Z) de l'image
+imyz.y = real(yz);
+imyz.z = imag(yz);
