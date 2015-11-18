@@ -1,0 +1,217 @@
+function objco = xfyz2objco(xf, imyz, ref)
+% xfyz2objco Conversion de points d'image en points d'objets dans le repère co (camera only)
+% F. Gueuning, 2013-15   Unité Electronique et informatique         ECAM, Bruxelles
+%
+% SPc 151028: Arrêter scan plus tard que précédemment
+% SPc 150422: Phase de balayage (Scan) avant phase de convergence dans le cas de matrice de distances car la fonction de cout présente des minima locaux
+% SPn 130222: Modification de repère : les coord yz capteur subissent une symétrie centrale par rapport au centre optique pour x>0
+% SPn 130212: création
+%
+% IN:  xf   Coordonnée x du capteur remis coté positif donc +f (où f est distance focale entre centre optique et plan du capteur contenant les points yz)
+%      imyz Structure de coordonnées .y, .z des points d'image dont on veut connaitre les points d'objet correspondant
+%           Avec .y, .z :
+%              Soit matrices
+%                Avec ref qui indique les paramètres A, B, C du plan auquel appartiennent les points d'objet correspondant 
+%              Soit vecteurs colonne (de longueur r>=4)
+%                Avec ref indiquant des distances entre points d'objet correspondants
+%      ref  Matrice d'informations concernant les points d'objet, soit situés dans un plan donné, soit de distances connues entre eux
+%           Plan: Vecteur ligne A, B, C des paramètres du plan auquel appartiennent tous les points d'objet dans le repère co (camera only)
+%                 L'équation du plan est  A*X + B*Y + C*Z + 1 = 0  et les paramètres peuvent provenir de la fonction regresplane
+%           Dist: Matrice de distances entre points d'objet de size (r, r-1)  avec  r>=4
+%                 L'élément ref(i,j), s'il est non nul, contient la distance entre les points d'objet i et j
+%                 ref(1, j) doit être non nul pour j>1 
+%                 Pour une solution unique, il semble nécessaire de connaitre les relations entre au moins 4 points, voir :
+%                 "Finding 3D Positions from 2D Images Feasibility Analysis, H. G. Lochana Prematunga, ICONS 2012"
+%                 Exemple: Pour 5 points d'un graphique d'oscilloscope dans le sens ul (up left), ur, dr (down right), dl, OO (origin)
+%                          Respectivement aux coordonnées  -50,40  50,40  50,-40  -50,-40  0,0
+%                          On pourrait avoir
+%                          L = 100; H = 80; D = sqrt(L^2 + H^2);
+%                          %       ul   ur   dr   dl   OO
+%                          ref = [  0    L    D    H  D/2   % ul
+%                                   0    0    H    D  D/2   % ur
+%                                   0    0    0    L  D/2   % dr
+%                                   0    0    0    0  D/2]; % dl
+% OUT: objco  Structure de coordonnées .x, .y, .z  des points d'objet correspondants à imyz dans le repère co (camera only)
+% Algorithme
+% On suppose une position pour le premier point puis on détermine les 2 positions correspondantes possibles pour les points 2 à r
+% sur base de ref(1,j) avec j>1.  Il y a donc 2^(r-1) possibilités. On retiendra la possibilité qui minimise une fonction de cout.
+
+y = imyz.y;
+z = imyz.z;
+[r, c] = size(y);
+x = xf * ones(r, c); % xf doit être positif
+
+if size(ref,1)==1 && size(ref,2)==3
+   
+   % Plan
+   %------
+   % k*(A*x + B*y + C*z) + 1 = 0
+   k = -1 ./ (ref(1)*x + ref(2)*y + ref(3)*z);
+
+else
+   
+   % Distances
+   %-----------
+   % Comme les distances entre points de l'objet sont connues, tentons de déterminer pour chacun
+   % la position sur la droite le joignant au centre optique.
+   % Considérons que le premier point (Pt, lors de l'itération i) est aux coordonnées  kP(i)*[x(1), y(1), z(1)].
+   Ray1 = [x(1) y(1) z(1)];
+   Ray = [x(2:r) y(2:r) z(2:r)];
+   K = [1e15; 1e14]; % Début (bidon) de résultats d'une fonction de cout
+   nK = 0;
+   kP = [0;30]; % Début (bidon) de valeurs de kP(i), comme si on avait testé à 0x puis 30x la distance focale (ce qui est peu en général)
+   epsilon = 1e-5;
+   i = 2; % itération
+   Scan = 1; % Phase 1: scan pour kP augmenté chaque fois de 1% (environ 232 valeurs par décade) jusqu'à ce que le cout K soit "vraiment trop grand"
+   while Scan || (abs(K(i)-K(i-1))>epsilon) || ((abs(K(i)-K(i-1))/K(i))>epsilon) % Tant que Scan ou amélioration est notoire (en absolu ou relatif)
+      nK = nK+1;
+      if Scan
+         i = i+1;
+         kP(i) = kP(i-1)*1.01; % Testons kP(i) dans le même sens que kP(i-1) et avec incrément de 1%
+      else
+         %X150422 if isnan(K(i))
+         %X150422    % Pour un rayon au moins, il n'y a pas d'intersection à la distance prévue donc on est trop loin du centre optique
+         %X150422    kP(i) = kP(i-1) + 0.5*(kP(i)-kP(i-1)); % Testons à la moitié par rapport à l'avant dernière
+         %X150422 elseif K(i) < K(i-1) % Si c'est mieux, on va tester une nouvelle valeur
+         if K(i) < K(i-1) % Si c'est mieux, on va tester une nouvelle valeur
+            i = i+1;
+            kP(i) = kP(i-1) + kP(i-1)-kP(i-2); % C'est mieux, testons kP(i) dans le même sens que kP(i-1) et avec incrément identique
+         else % Sinon on a été trop loin
+            kP(i) = kP(i-1) + 0.5*(kP(i)-kP(i-1)); % Testons à la moitié par rapport à l'avant dernière
+         end
+      end
+      Pt = kP(i) * Ray1;
+      kk = inter(Pt, Ray, ref(1, 2:end)'); % Il y a 2*(r-1) valeurs de k (mais seules celles non nulles sont à considérer)
+      %X150422 if any(sum(abs(kk'))==0) % Si pas de point pour un des rayons 
+      %X150422    K(i) = NaN; % Ce cas est trop loin du centre optique
+      %X150422 else
+      XYZ = zeros(r-1, 3, 2); % Va contenir les points possibles
+      XYZ(:,:,1) = Ray .* (kk(:,1)*[1 1 1]);
+      XYZ(:,:,2) = Ray .* (kk(:,2)*[1 1 1]);
+      nk = sum(kk'~=0); % vecteur ligne de nombres de points effectivement possibles pour chaque rayon
+      % En combinant ces valeurs, il y a prod(nk) cas à comparer
+      C = (dec2x((0:(prod(nk)-1))', nk) + 1)';
+      C = C(1:length(nk),:); % Chaque colonne contient les indices 1 ou 2 pour le XYZ de rangée correspondante
+      % Calculons la fonction de cout Ki qui est la somme de carrés de chaque différence entre distance connues Dij et distance calculée DCij
+      Ki = zeros(1, size(C,2));
+      for ik = 1:size(C,2) % Pour chaque ensemble de points possible
+         % Distances entre Pt et XYZ
+         for ic = 2:r
+            if ref(1, ic)
+               DD2 = (dist(Pt, XYZ(ic-1, :, C(ic-1, ik)))-ref(1, ic))^2;
+               Ki(ik) = Ki(ik) + DD2;
+            end
+         end
+         for ir = 2:r-1
+            for ic = 2:r
+               if ref(ir, ic)
+                  DD_2 = (dist(XYZ(ir-1, :, C(ir-1, ik)), XYZ(ic-1, :, C(ic-1, ik)))-ref(ir, ic))^2;
+                  Ki(ik) = Ki(ik) + DD_2;
+               end
+            end
+         end
+      end
+      ik = find(Ki==min(Ki)); % On retient la possibilité dont la fonction de cout donne le minimum
+      K(i) = Ki(ik);
+      k_(i)=kP(i);
+      %X150422 end
+      %disp(sprintf('cout=%d,  x=%d', K(i), k_(i)*x(1)))
+      if Scan  % 150422
+         %X151028 if K(i)>K(3) % Arreter Scan si cout K(i) devenu plus grand que le premier calculé
+         if K(i)>10*K(3) % Arreter Scan si cout K(i) devenu plus grand que le premier calculé
+            nKscan = nK;
+            nK = 0;
+            Scan = 0;
+            % Détecter l'indice de cout minimum pour initialiser la phase de convergence
+            imin = find(K==min(K), 1);
+            K = K(imin-1:imin);
+            kP = kP(imin-1:imin);
+            i = 2; % itération
+         end
+      end
+   end
+   disp(sprintf('Scan sur %d valeurs puis convergence à %d itérations pour trouver k', nKscan, nK))
+   disp(sprintf('Ordre de grandeur de l''erreur de positionnement: %3.0f mm', sqrt(K(end)/sum(sum(ref>0)))))
+   k = zeros(r,1);
+   k(1) = kP(i);
+   for ir = 2:r
+      k(ir) = kk(ir-1, C(ir-1, ik));
+   end
+end
+objco.x = k .* x;
+objco.y = k .* y;
+objco.z = k .* z;
+k;
+%------------------------------------------------------------------------------------------------------------------------------------
+function D = dist(Pt1, Pt2)
+% Distance entre 2 points
+% IN:  Pt1  vecteur ligne contenant x, y, z
+%      Pt2  similaire
+D = sqrt(sum((Pt1-Pt2).^2));
+%------------------------------------------------------------------------------------------------------------------------------------
+function k = inter(Pt, Ray, D)
+% Détermine les 2 valeurs de k telles que les points Pt et k*Ray soient distants de D
+% SPc 150422: acceptation de partie réelle si k complexe
+% SPn 130212: Création
+% IN:  Pt    Point de position connue
+%            Vecteur ligne xP, yP, zP de size [1, 3]
+%      Ray   Rayons (de longueur quelconque) suivant lesquelles ont veut déterminer la position de points d'objets
+%            Matrice xR1, yR1, zR1; xR2, ...  de size [r, 3] 
+%      Dist  Distances entre Pt et chaque point à déterminer
+%            Vecteur colonne de size [r, 1]
+% OUT: k     facteurs multiplicatifs de Ray pour obtenir les points à distances D de Pt
+%            Matrice de size [r, 2] dont seules les valeurs différentes de 0 ont un intérêt.
+%            Par ligne, entre 0 et 2 valeurs possibles de k pour le rayon correspondant.
+xP = Pt(1);
+yP = Pt(2);
+zP = Pt(3);
+xR = Ray(:,1);
+yR = Ray(:,2);
+zR = Ray(:,3);
+OO = ones(size(D));
+% Il faut multiplier chaque rayon par un facteur k pour déterminer le point d'objet correspondant.
+% Trouver k tel que  (k*xR-xP)² + (k*yR-yP)² + (k*zR-zP)² = D²
+% Il y a 2 solutions (caculée avec maxima) éventuellement complexes ou confondues :
+%     (%i1) [globalsolve:true, programmode:false];
+%     (%o1)                            [true, false]
+%     (%i2) _A: (k*xR-xP)^2 + (k*yR-yP)^2 + (k*zR-zP)^2 - D^2;
+%                                2              2              2    2
+%     (%o2)           (k zR - zP)  + (k yR - yP)  + (k xR - xP)  - D
+%     (%i3) solve(_A, k);
+%     solve: solution:
+%                            2     2    2    2
+%     (%t3) k = - (sqrt((- yP  - xP  + D ) zR  + (2 yP yR + 2 xP xR) zP zR
+%             2     2    2     2     2    2                     2   2    2   2
+%      + (- yR  - xR ) zP  + (D  - xP ) yR  + 2 xP xR yP yR - xR  yP  + D  xR )
+%                                  2     2     2
+%      - zP zR - yP yR - xP xR)/(zR  + yR  + xR )
+%
+%                          2     2    2    2
+%     (%t4) k = (sqrt((- yP  - xP  + D ) zR  + (2 yP yR + 2 xP xR) zP zR
+%             2     2    2     2     2    2                     2   2    2   2
+%      + (- yR  - xR ) zP  + (D  - xP ) yR  + 2 xP xR yP yR - xR  yP  + D  xR )
+%                                  2     2     2
+%      + zP zR + yP yR + xP xR)/(zR  + yR  + xR )
+
+%X150422 k = - (sqrt(((-yP^2-xP^2)*OO+D.^2).*zR.^2 + (2*yP*yR+2*xP*xR)*zP.*zR ...
+%X150422    + (-yR.^2-xR.^2)*zP^2 + (D.^2-xP^2*OO).*yR.^2 + 2*xP*xR*yP.*yR - xR.^2*yP^2 + D.^2.*xR.^2) ...
+%X150422    - zP*zR-yP*yR-xP*xR) ./ (zR.^2+yR.^2+xR.^2);
+%X150422 k2 = +(sqrt(((-yP^2-xP^2)*OO+D.^2).*zR.^2 + (2*yP*yR+2*xP*xR)*zP.*zR ...
+%X150422    + (-yR.^2-xR.^2)*zP^2 + (D.^2-xP^2*OO).*yR.^2 + 2*xP*xR*yP.*yR - xR.^2*yP^2 + D.^2.*xR.^2) ...
+%X150422    + zP*zR+yP*yR+xP*xR) ./ (zR.^2+yR.^2+xR.^2);
+
+k = - (sqrt((-yP^2-xP^2+D.^2).*zR.^2 + (2*yP*yR+2*xP*xR)*zP.*zR ...
+   + (-yR.^2-xR.^2)*zP^2 + (D.^2-xP^2).*yR.^2 + 2*xP*xR*yP.*yR - xR.^2*yP^2 + D.^2.*xR.^2) ...
+   - zP*zR-yP*yR-xP*xR) ./ (zR.^2+yR.^2+xR.^2);
+k2 = +(sqrt((-yP^2-xP^2+D.^2).*zR.^2 + (2*yP*yR+2*xP*xR)*zP.*zR ...
+   + (-yR.^2-xR.^2)*zP^2 + (D.^2-xP^2).*yR.^2 + 2*xP*xR*yP.*yR - xR.^2*yP^2 + D.^2.*xR.^2) ...
+   + zP*zR+yP*yR+xP*xR) ./ (zR.^2+yR.^2+xR.^2);
+%X150422 Ces deux valeurs pourraient être confondues ou complexes, et dans ce dernier cas remplacées par 0
+%X150422 car ne présentant pas d'intéret.
+
+% Ces deux valeurs pourraient être complexes et dans ce cas, leur partie réelle est un moindre mal
+k = real(k); k2 = real(k2); % 150421
+% Si elles sont confondues, une seule suffit, l'autre est remplacées par 0
+k2(k==k2) = 0; % Ne retenir qu'une seule valeur si confondues
+k = [k k2];
+%X150422 k(imag(k)~=0) = 0; % Ne pas considérer les complexes
