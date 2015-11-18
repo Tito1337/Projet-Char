@@ -1,0 +1,57 @@
+% Camera - procédure d'étalonnage
+%---------------------------------
+%      Caméra sur Rasberry pi                            PC                
+%  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+%  Prend les images en continu    <---   Fournit nom de fichier contenant
+%  Utilise zones pour déterminer          zones et couleurs pour étalonnage (une zone par point)
+%   centroides d'étalonnage              ______
+%  Renvoie chaque fois im.ir      --->  |pix2yz| distances entre points
+%                        .ic             ¯¯T¯¯¯  |         d'étalonnage
+%                                        __V_____V_
+%                                       |xfyz2objco|
+%                                        ¯¯¯¯¯T¯¯¯¯positions xyz des points
+%                                             V     dans le repère caméra
+%                                        Déterminer position caméra dans le repère robot
+%                                        Déterminer équation du plan du terrain dans le repère caméra
+%                                          |
+%                                        __V__
+%                                       |co2ro|
+%                                        ¯¯|¯¯
+%                                          V  coordonnées des centroides dans le repère robot
+
+im_ = rgbaread('col_detected', 3/2);
+image(im_(:,:,1:3))
+disp('Agrandir la figure puis cliquer sur les 4 centroides')
+[im.ic, im.ir]=ginput(4) % --->  Remplacer ce choix manuel par les centroides fournis par la raspberry (picam.cpp)  <---
+[imyz, sens] = pix2yz(im, 'picam_384x256')
+%       ¯¯¯¯¯¯¯¯¯¯
+D = 646; % diag (mm)
+H = 646/sqrt(2);
+L = H;
+%       ul   ur   dr   dl
+ref = [  0    L    D    H    % ul
+         0    0    H    D    % ur
+         0    0    0    L];  % dr
+%       __________
+objco = xfyz2objco(sens.F, imyz, ref);
+%       ¯¯¯¯¯¯¯¯¯¯
+figure,plot3(objco.x([1:end 1]), objco.y([1:end 1]), objco.z([1:end 1]))
+set(gca,'dataAspectRatio',[1 1 1])
+
+
+% Camera - Mesure de position d'objets
+%--------------------------------------
+%      Caméra sur Rasberry pi                            PC                
+%  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯        ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+%  Prend les images en continu    <---   Fournit nom de fichier contenant                               
+%  Utilise zones pour déterminer          zones et couleurs pour détection d'objets (une zone par objet)
+%   centroides d'objets                  ______                                                         
+%  Renvoie chaque fois im.ir      --->  |pix2yz| équation du plan du terrain + hauteur de centroide  \
+%                        .ic             ¯¯T¯¯¯  |                                                    |
+%                                        __V_____V_                                                   | 
+%                                       |xfyz2objco|                                                  |          _________
+%                                        ¯¯¯¯¯T¯¯¯¯positions xyz des centroides                        >   <=>  |pix2objro|
+%                                           __V__   dans le repère caméra                             |          ¯¯¯¯¯¯¯¯¯
+%                                          |co2ro|                                                    |
+%                                           ¯¯|¯¯                                                     |
+%                                             V  coordonnées des centroides dans le repère robot     /

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<project>
+
+  <MATLABPath>
+    <Directory>E:\Documents_de_GNG\ECAM\Matlab\Ecam\4MA_Images\Camera2015</Directory>
+    <Directory>E:\Matlab2006B\toolbox\compiler\deploy</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\general</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\ops</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\lang</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\elmat</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\elfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\specfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\matfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\datafun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\polyfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\funfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\sparfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\scribe</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\graph2d</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\graph3d</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\specgraph</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\graphics</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\uitools</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\strfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\imagesci</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\iofun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\audiovideo</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\timefun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\datatypes</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\verctrl</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\codetools</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\helptools</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\winfun</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\demos</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\timeseries</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\hds</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\guide</Directory>
+    <Directory>E:\Matlab2006B\toolbox\matlab\plottools</Directory>
+    <Directory>E:\Matlab2006B\toolbox\local</Directory>
+    <Directory>E:\Matlab2006B\toolbox\shared\controllib</Directory>
+    <Directory>E:\Matlab2006B\toolbox\compiler</Directory>
+    <Directory>E:\Matlab2006B\work</Directory>
+  </MATLABPath>
+
+  <MCCProperties>
+    <output/>
+    <wrapper>
+      <type>cpplib</type>
+      <component_name>libcam2015</component_name>
+    </wrapper>
+    <link>lib</link>
+    <create_vb_wrapper>false</create_vb_wrapper>
+    <intermediate_dir></intermediate_dir>
+    <output_dir></output_dir>
+    <generate_code_only>false</generate_code_only>
+    <verbose>false</verbose>
+    <MCR_runtime_options>
+      <share_mcr>false</share_mcr>
+    </MCR_runtime_options>
+    <options_file/>
+    <toolboxes_on_path shortcut="all"/>
+    <debug>false</debug>
+    <warning shortcut="default"/>
+    <license_file/>
+  </MCCProperties>
+
+  <file_info>
+    <category name="Exported functions">
+      <file>E:\Documents_de_GNG\ECAM\Matlab\Ecam\4MA_Images\Camera2015\xfyz2objco.m</file>
+    </category>
+    <category name="Other files"/>
+    <category name="C/C++ files"/>
+  </file_info>
+
+</project>
