@@ -7,8 +7,10 @@ double Kp=2, Ki=0, Kd=0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 //Distance à parcourir
-float d = 45; //distance en cm
-float distance; //distance en rising edge (1)
+float d1 = 45; //distance en cm 
+float distance1; //distance en rising edge
+float d2;
+float distance2;
 
 // Motors
 int DIR1 = 8;
@@ -46,19 +48,19 @@ void setup() {
   direct = forward;
   Serial.print(direct);
   vit = 50;
-  convertisseur(d);
+  convertisseur(d1);
   delay(100);
 }
 
 void loop() {
  Serial.println("distance");
- Serial.println(distance);
+ Serial.println(distance1);
  Serial.println("loop");
  Serial.println(vit);
  Serial.println(direct);
  motorManagement (vit, direct);
  roueCodeuse ();
- if (compt1_1 > distance) { //vérification de la distance atteinte ou pas
+ if (compt1_1 > distance1) { //vérification de la distance atteinte ou pas
   vit = 255;
   direct = stopp;
  }
@@ -119,9 +121,10 @@ void motorManagement ( int vitesse, char direct){ //choix des directions
   }
 }
 
+
 void roueCodeuse (){ //compteur de 1 pour atteindre la distance choisie
      Serial.println("roue codeuse");
-      if (digitalRead(R1) == HIGH && compt1[-1]!= 1 ) 
+      if (digitalRead(R1) == HIGH && compt1[-1] != 1 ) 
       {
         compt1_1 = compt1_1 + 1;
         compt1 [-1] = 1;
@@ -135,7 +138,8 @@ void roueCodeuse (){ //compteur de 1 pour atteindre la distance choisie
       }
 }
 
+
 void convertisseur(float d){ //convertisseur de cm en nombre de 1 roue codeuse
-  distance = d/0.44;  
+  distance1 = d1/0.44;  
 }
 
