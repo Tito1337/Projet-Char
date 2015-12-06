@@ -1,31 +1,38 @@
+#define DEBUG
+#ifdef DEBUG
+ #define DEBUG_PRINT(x)  Serial.print (x)
+ #define DEBUG_PRINTLN(x)  Serial.println (x)
+#else
+ #define DEBUG_PRINT(x)
+#endif
+
 #include <Wire.h>
 
 // Variables globales
-char rpiBuffer[128];
+char buffer_receive[32];
+char buffer_send[32];
 int sofar;
 
-// Définition de fonctions
-float parseNumber(char, float);
-void processCommand();
-void doMove(float, float, float);
-void getPosition(bool, bool);
-void getSensors(bool, bool, bool, bool);
-
+// Arduino Setup
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);
-  Serial.println("Started");
+  #ifdef DEBUG
+    Serial.begin(9600);
+    while (!Serial);
+    Serial.println("Debug started");
+  #endif
+  
   Wire.begin(8);                // join i2c bus with address #8
-  Wire.onRequest(wireSend);
-  Wire.onReceive(wireReceive);
+  Wire.onRequest(wireSendEvent);
+  Wire.onReceive(wireReceiveEvent);
 }
 
+// Arduino Loop
 void loop() {
 }
 
 float parseNumber(char code,float fallback) {
-  char *ptr=rpiBuffer;
-  while(ptr && *ptr && ptr<rpiBuffer+sofar) {
+  char *ptr=buffer_receive;
+  while(ptr && *ptr && ptr<buffer_receive+sofar) {
     if(*ptr==code) {
       return atof(ptr+1);
     }
@@ -35,8 +42,8 @@ float parseNumber(char code,float fallback) {
 }
 
 bool parsePresent(char code) {
-  char *ptr=rpiBuffer;
-  while(ptr && *ptr && ptr<rpiBuffer+sofar) {
+  char *ptr=buffer_receive;
+  while(ptr && *ptr && ptr<buffer_receive+sofar) {
     if(*ptr==code) {
       return 1;
     }
@@ -84,34 +91,33 @@ void doMove(float right, float left, float speed) {
 }
 
 void getPosition(bool R, bool L) {
-  Serial.print("You asked for position ");
-  if(R) Serial.print("right ");
-  if(L) Serial.print("left ");
-  Serial.println();
+  DEBUG_PRINT("You asked for position ");
+  if(R) DEBUG_PRINT("right ");
+  if(L) DEBUG_PRINT("left ");
+  DEBUG_PRINTLN();
 }
 
 void getSensors(bool A, bool B, bool C, bool D) {
-  Serial.print("You asked for sensor ");
-  if(A) Serial.print("A ");
-  if(B) Serial.print("B ");
-  if(C) Serial.print("C ");
-  if(D) Serial.print("D ");
-  Serial.println();
-  Wire.write("Q2 A1 B2 C3 D4");
+  DEBUG_PRINT("You asked for sensors ");
+  if(A) DEBUG_PRINT("A ");
+  if(B) DEBUG_PRINT("B ");
+  if(C) DEBUG_PRINT("C ");
+  if(D) DEBUG_PRINT("D ");
+  DEBUG_PRINTLN();
+  
+  wireSend("Q2 A1 C3");
 }
 
-void wireReceive(int howMany) {
-  Serial.println("Wire receive...");
+void wireReceiveEvent(int howMany) {
+  DEBUG_PRINT("Receiving on I2C : ");
   char c;
   if(Wire.available() > 0) {
     while(Wire.available() > 0) {
       c = Wire.read();
-      Serial.print(c);
-      if(sofar<127) rpiBuffer[sofar++] = c;
+      if(sofar<127) buffer_receive[sofar++] = c;
       if(c=='\n') {
-        rpiBuffer[sofar]=0;
-        Serial.print("Received : ");
-        Serial.print(rpiBuffer);
+        buffer_receive[sofar]=0;
+        DEBUG_PRINTLN(buffer_receive);
         processCommand();
         sofar = 0;
       }
@@ -119,7 +125,13 @@ void wireReceive(int howMany) {
   }
 }
 
-void wireSend() {
-  Serial.println("Wire send...");
-  Wire.write("Coucou!");
+void wireSend(char* str) {
+  strncpy(buffer_send, str, 32);
+  strncat(buffer_send, "\n", 32);
+}
+
+void wireSendEvent() {
+  Wire.write(buffer_send);
+  /*DEBUG_PRINT("Sending on I2C : ");
+  DEBUG_PRINT(buffer_send);*/
 }
