@@ -7,8 +7,8 @@ double Kp=2, Ki=0, Kd=0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 //Distance à parcourir
-float d = 45;
-float distance;
+float d = 45; //distance en cm
+float distance; //distance en rising edge (1)
 
 // Motors
 int DIR1 = 8;
