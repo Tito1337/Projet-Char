@@ -1,11 +1,3 @@
-#define DEBUG
-#ifdef DEBUG
- #define DEBUG_PRINT(x)  Serial.print (x)
- #define DEBUG_PRINTLN(x)  Serial.println (x)
-#else
- #define DEBUG_PRINT(x)
-#endif
-
 //PID asservissement
 #include <PID_v1.h>
 #define PIN_INPUT 0
@@ -13,6 +5,10 @@
 double Setpoint, Input, Output;
 double Kp=2, Ki=0, Kd=0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+
+//Distance à parcourir
+float d = 45;
+float distance;
 
 // Motors
 int DIR1 = 8;
@@ -22,12 +18,12 @@ int PWM2 = 11;
 
 //Roue codeuse
 int R1 = 2; //pour la pin
-int compt1 [200] ={0}; // compter la totalité
+int compt1 [2] ={0}; // compter la totalité (c'est comme une liste)
 unsigned int compt1_0 = 0; //compter le nombre de 0
 unsigned int compt1_1 = 0; //compter le nombre de 1 de roue codeuse 1
  
 //variable de vitesse
-int vit; // entre 0 et 256 (0 étant la vitesse maximale, et 180 la vitesse minimale)
+int vit; // entre 0 et 255 (0 étant la vitesse maximale, et 255 la vitesse minimale)
 
 //choix direction
 char direct ;
@@ -44,30 +40,32 @@ void setup() {
   pinMode(DIR2,OUTPUT);
   pinMode(PWM2,OUTPUT);
   pinMode(R1, INPUT);
-  //digitalWrite(R1, LOW);
   Serial.println("vitesse= ");
   Serial.println(vit);
   Serial.println("direction");
   direct = forward;
   Serial.print(direct);
   vit = 50;
+  convertisseur(d);
   delay(100);
 }
 
 void loop() {
- Serial.println("je suis dans le loop");
+ Serial.println("distance");
+ Serial.println(distance);
+ Serial.println("loop");
  Serial.println(vit);
  Serial.println(direct);
  motorManagement (vit, direct);
  roueCodeuse ();
- if (compt1_1 > 200) {
+ if (compt1_1 > distance) { //vérification de la distance atteinte ou pas
   vit = 255;
   direct = stopp;
  }
 }
 
 
-void motorManagement ( int vitesse, char direct){
+void motorManagement ( int vitesse, char direct){ //choix des directions
   switch (direct){
     case forward: // forward      
       digitalWrite(DIR1, 1);
@@ -120,8 +118,9 @@ void motorManagement ( int vitesse, char direct){
       break;
   }
 }
-void roueCodeuse (){
-     Serial.println("je suis dans roue codeuse");
+
+void roueCodeuse (){ //compteur de 1 pour atteindre la distance choisie
+     Serial.println("roue codeuse");
       if (digitalRead(R1) == HIGH && compt1[-1]!= 1 ) 
       {
         compt1_1 = compt1_1 + 1;
@@ -133,8 +132,10 @@ void roueCodeuse (){
       {
         compt1_0 = compt1_0 + 1;
         compt1 [-1] = 0;
-        Serial.println("valeur roue = ");
-        Serial.println(compt1_0);
       }
+}
+
+void convertisseur(float d){ //convertisseur de cm en nombre de 1 roue codeuse
+  distance = d/0.44;  
 }
 
