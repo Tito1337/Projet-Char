@@ -7,7 +7,7 @@ double Kp=2, Ki=0, Kd=0;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
 //Distance à parcourir
-float d1 = 45; //distance en cm 
+float d1; //distance en cm 
 float distance1; //distance en rising edge
 float d2;
 float distance2;
@@ -45,9 +45,9 @@ void setup() {
   Serial.println("vitesse= ");
   Serial.println(vit);
   Serial.println("direction");
-  direct = forward;
+  //direct = forward;
   Serial.print(direct);
-  vit = 50;
+  //vit = 50;
   convertisseur(d1);
   delay(100);
 }
@@ -141,5 +141,12 @@ void roueCodeuse (){ //compteur de 1 pour atteindre la distance choisie
 
 void convertisseur(float d){ //convertisseur de cm en nombre de 1 roue codeuse
   distance1 = d1/0.44;  
+}
+
+void doMove (float right, float left, int Speed, char Direction){
+  d1 = right;
+  vit = Speed;
+  direct = Direction;
+  
 }
 
