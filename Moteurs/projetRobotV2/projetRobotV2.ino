@@ -1,3 +1,11 @@
+#define DEBUG
+#ifdef DEBUG
+ #define DEBUG_PRINT(x)  Serial.print (x)
+ #define DEBUG_PRINTLN(x)  Serial.println (x)
+#else
+ #define DEBUG_PRINT(x)
+#endif
+
 //PID asservissement
 #include <PID_v1.h>
 #define PIN_INPUT 0
