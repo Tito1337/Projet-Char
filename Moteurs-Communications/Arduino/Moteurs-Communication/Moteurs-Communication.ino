@@ -2,7 +2,7 @@ void setup() {
   Communications_setup();
   Moteurs_setup();
 
-  doMove(60.0, 100.0, 255);
+  doMove(100.0, 100.0, 75);
 }
 
 void loop() {

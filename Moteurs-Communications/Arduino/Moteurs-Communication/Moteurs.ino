@@ -105,6 +105,7 @@ void roueCodeuse() {
   }
 }
 
+// Fonction recevant l'ordre de se déplacer. right et left en cm (positif = en avant, négatif = en arrière). speed en pourcents (0 à 100)
 void doMove(float right, float left, float speed) {
   float absRight = abs(right);
   float absLeft = abs(left);
@@ -127,11 +128,11 @@ void doMove(float right, float left, float speed) {
  
   // Adaptation basique de la vitesse 
   if(absRight>absLeft) {
-    speedR = speed;
-    speedL = speed/(absRight/absLeft);
+    speedR = 2.55*speed;
+    speedL = 2.55*speed/(absRight/absLeft);
   } else {
-    speedL = speed;
-    speedR = speed/(absLeft/absRight);
+    speedL = 2.55*speed;
+    speedR = 2.55*speed/(absLeft/absRight);
   }
 }
 
