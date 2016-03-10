@@ -12,7 +12,6 @@
 #include <time.h>
 #include <curses.h>
 #include <complex>
-#include <opencv2/core/core.hpp>
 
 // for text
 #include <ft2build.h>  // need  include_directories(/usr/include/freetype2)  in file  CMakeLists.txt
@@ -489,20 +488,6 @@ int main(int argc, const char **argv) {
       }
 
       EndFrame(CheckGL);
-
-
-      //read current time  gng
-      if((i%10)==0) {
-            clock_gettime(CLOCK_REALTIME, &gettime_now);
-            time_diff = difftime(gettime_now.tv_sec, start_time_t);
-            time_difference = gettime_now.tv_nsec - start_time;
-            start_time_t = gettime_now.tv_sec;
-            start_time = gettime_now.tv_nsec;
-            float fr = float(double(10)/(double(time_diff) + double(time_difference)/1000000000.0));
-            mvprintw(0,0,"   Framerate: %g",fr); // gng: perhaps problem with \n if I well understand  http://repo.hackerzvoice.net/depot_madchat/coding/c/c.scene/cs3/CS3-08.html
-            move(0,0);
-            refresh();
-      }
       CheckGL = false; // no more check
    }
 

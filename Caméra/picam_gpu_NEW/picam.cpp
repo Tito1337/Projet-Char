@@ -12,6 +12,8 @@
 #include <time.h>
 #include <curses.h>
 #include <complex>
+#include <opencv2/core/core.hpp>
+
 
 // for text
 #include <ft2build.h>  // need  include_directories(/usr/include/freetype2)  in file  CMakeLists.txt
@@ -338,25 +340,25 @@ int main(int argc, const char **argv) {
    colpar[3].setMin ( 0,  0,  0 , 0 ); // rgba  G and B relative to R
    colpar[3].setMax (100, .376, 100,  1 ); // rgba  G and B relative to R
 
-    // gng Load image FOR TEST only
-    const char* testim_filename = "im_color_for_test.png";
-    unsigned char* testim_image, testim2;
-    if (argc>1) {  // Use test image    ex:  ./picam 1
-        //load and decode
-        unsigned testim_error;
-        size_t testim_width, testim_height;
-        testim_error = lodepng_decode32_file(&testim_image, &testim_width, &testim_height, testim_filename);
-        if(testim_error) printf("decoder error %u: %s\n", testim_error, lodepng_error_text(testim_error));
-        else //the pixels are now in the vector "testim_image", 4 bytes per pixel, ordered RGBARGBA..., use it as texture, draw it, ...
-             for (long k=0; k<393216; k++) testim_image[k] = testim_image[k*4]; // place R first (only first color is used for Y)
-    }
+   // gng Load image FOR TEST only
+   const char* testim_filename = "im_color_for_test.png";
+   unsigned char* testim_image, testim2;
+   if (argc>1) {  // Use test image    ex:  ./picam 1
+      //load and decode
+      unsigned testim_error;
+      size_t testim_width, testim_height;
+      testim_error = lodepng_decode32_file(&testim_image, &testim_width, &testim_height, testim_filename);
+      if(testim_error) printf("decoder error %u: %s\n", testim_error, lodepng_error_text(testim_error));
+      else //the pixels are now in the vector "testim_image", 4 bytes per pixel, ordered RGBARGBA..., use it as texture, draw it, ...
+         for (long k=0; k<393216; k++) testim_image[k] = testim_image[k*4]; // place R first (only first color is used for Y)
+   }
 
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
    int setmode = 0; // Jeremy Bartholomeus
 
    // Main loop
-   while(true) {
+   for(int i=1; i<100000; i++) {
       int ch = getch();
       float Num;
       if (i==1) ch = 'x'; // for selection of first editable detection color

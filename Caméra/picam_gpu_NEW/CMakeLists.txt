@@ -11,5 +11,7 @@ include_directories(/opt/vc/userland-master/host_applications/linux/libs/bcm_hos
 include_directories(/usr/include/freetype2)
 link_directories(/opt/vc/lib)
 add_executable(picam picam.cpp camera.cpp cameracontrol.cpp graphics.cpp lodepng.cpp)
-
 target_link_libraries(picam rt libmmal_core.so libmmal_util.so libmmal_vc_client.so libvcos.so libbcm_host.so GLESv2 EGL ncurses ${OpenCV_LIBS})
+
+add_executable(picam-headless picam-headless.cpp camera.cpp cameracontrol.cpp graphics.cpp lodepng.cpp)
+target_link_libraries(picam-headless rt libmmal_core.so libmmal_util.so libmmal_vc_client.so libvcos.so libbcm_host.so GLESv2 EGL ncurses ${OpenCV_LIBS})
