@@ -1,8 +1,8 @@
 #include <PID_v1.h>
 #include <Time.h>
 // PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
-// Set point sera p/ex int speedR
-// Input la vitesse de rotation de la roue
+// Set point sera un distance à atteindre, la consigne.
+// Input la distance à laquelle on se trouve
 // Output la valeur de PWM
 
 
@@ -30,8 +30,6 @@ bool lastComptL = LOW;
 bool lastComptR = LOW;
 long comptTargetL = 0;
 long comptTargetR = 0;
-long cm_R = 0;
-long cm_L = 0;
 //Moteurs
 int directionL = FORWARD;
 int directionR = FORWARD;
@@ -40,10 +38,11 @@ int speedR;
 //Ultra-sons
 float distUS;
 //PID
-double Setpoint, Input, Output;
-
+double Setpoint, Input, Output,Setpoint1, Input1, Output1;
+double OutputR,OutputL;
 //Specify the links and initial tuning parameters
-PID myPID(&Input, &Output, &Setpoint,3.5,0,0, DIRECT);
+PID PIDlineaire(&Input, &Output, &Setpoint,2,5,0, DIRECT);
+PID PIDangulaire(&Input1, &Output1, &Setpoint1,2,1,0, DIRECT);
 
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
@@ -60,27 +59,37 @@ void Moteurs_setup() {
   pinMode(PIN_ULTRASONS_TRIG,OUTPUT);
   pinMode(PIN_ULTRASONS_ECHO, INPUT);
 
-  myPID.SetMode(AUTOMATIC); //turn on the PID 
-  //Input = cm_R;
+  PIDlineaire.SetMode(AUTOMATIC); //turn on the PID 
+  PIDangulaire.SetMode(AUTOMATIC);
   Input=0;
   attachInterrupt(0, roueCodeuse, CHANGE);
   attachInterrupt(1, roueCodeuse, CHANGE);
-
+  Setpoint1 = 0;
+  OutputR = constrain(OutputR, -100, 150);
+  OutputL = constrain(OutputL, -100, 150);
 
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
 void Moteurs_loop() {
-  //roueCodeuse();
   motorManagement();
   ultrasons();
-  myPID.Compute();
-  Serial.print("Setpoint");
+  //PIDangulaire.Compute();
+ // PIDlineaire.Compute();
+  Serial.print("Setpoint----");
   Serial.println(Setpoint);
-  Serial.print("output");
+  Serial.print("Setpoint1----");
+  Serial.println(Setpoint1);
+  Serial.print("output----");
   Serial.println(Output);
-  Serial.print("Input");
+  Serial.print("output1----");
+  Serial.println(Output1);
+  Serial.print("outputR----");
+  Serial.println(OutputR);
+  Serial.print("Input----");
   Serial.println(Input);
+  Serial.print("Input1----");
+  Serial.println(Input1);
 }
 
 // regulateMotors se charge de réguler la vitesse des moteurs pour atteindre l'objectif de distance fixé
@@ -90,48 +99,35 @@ void motorManagement() {
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetL);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(Output);
-  if (distUS > 15){
-  
-  
-  
-  //if(comptTargetL > comptL) {
-    if(directionL == FORWARD) {
-      digitalWrite(PIN_DIR_L1, 1);
-       analogWrite(PIN_PWM_L, Output);
-    } else {
-      digitalWrite(PIN_DIR_L1, 0);
-      analogWrite(PIN_PWM_L, Output);     
-    }
-    /*} else {
-      analogWrite(PIN_PWM_L, 0);
-      Serial.println("distance atteinte L ");
-  }
- */
+  DEBUG_PRINTLN(OutputL);
+
 
   DEBUG_PRINT("RIGHT : ");
   DEBUG_PRINT(comptR);
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetR);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(Output);
-  
-  //if(Setpoint > comptR) {
-    if(directionR == FORWARD) {
-     
-      analogWrite(PIN_PWM_R, Output);
+  DEBUG_PRINTLN(OutputR);
+  if (distUS > 15){
+    if(directionL == FORWARD) {
+      digitalWrite(PIN_DIR_L1, 1);
+       analogWrite(PIN_PWM_L, OutputL);
+    } else {
+      digitalWrite(PIN_DIR_L1, 0);
+      analogWrite(PIN_PWM_L, OutputL);     
+    }
+
+
+    if(directionR == FORWARD) {     
+      analogWrite(PIN_PWM_R, OutputR);
       digitalWrite(PIN_DIR_R1, 1);
     } else {
       digitalWrite(PIN_DIR_R1, 0);
-      analogWrite(PIN_PWM_R, Output);    
+      analogWrite(PIN_PWM_R, OutputR);    
     }
- /* } else {
-     analogWrite(PIN_PWM_R, 0);
-     Serial.println("distance atteinte R ");      
-  }*/
   }
  else {
-     Serial.println("La distance est moins de 15cm ");
+   Serial.println("La distance est moins de 15cm ");
    analogWrite(PIN_PWM_L, 0);
    analogWrite(PIN_PWM_R, 0);
   }
@@ -144,37 +140,29 @@ void roueCodeuse() {
   if (digitalRead(PIN_COUNTER_L) != lastComptL) {
     comptL++;
     lastComptL = !lastComptL;
-    //Serial.println("je compte le gauche");
-    cm_L = comptL*CM_TO_COUNT_RATIO;
-   
-   // if(Setpoint <= comptR) {
-     // analogWrite(PIN_PWM_R, 0);
-    //}
   }
 
   if (digitalRead(PIN_COUNTER_R) != lastComptR) {
     comptR++;
     lastComptR = !lastComptR;
-    //Serial.print("je compte le droit");
-    //Serial.println(comptR);
-    cm_R = comptR*CM_TO_COUNT_RATIO;
-    //Setpoint--;    
   }
   Input=(comptR+comptL)/2;
+  Input1=(comptR-comptL);
+  OutputR = Output + Output1;
+  OutputL = Output - Output1;
+  PIDangulaire.Compute();
+  PIDlineaire.Compute();
 }
 
 // Fonction recevant l'ordre de se déplacer. right et left en cm (positif = en avant, négatif = en arrière). speed en pourcents (0 à 100)
 void doMove(float left, float right, float speed) {
   float absRight = abs(right);
   float absLeft = abs(left);
-  //Setpoint = absRight;
   
   // On ajoute le nombre de count des roues codeuses au target
   comptTargetR += absRight/CM_TO_COUNT_RATIO;
   comptTargetL += absLeft/CM_TO_COUNT_RATIO;
-  //Input=comptR;
   Setpoint = comptTargetR;
-
   // On choisit la bonne direction pour chaque roue
   if(right<0) {
     directionR = BACKWARD;
@@ -198,12 +186,11 @@ void doMove(float left, float right, float speed) {
   Serial.print("la vitesse du debug est de ");
   Serial.println(speedL);
 }
+
 //Fonction calculant la distance entre un objet et le robot pour ainsi arrêter le robot en urgence avant la percution. 
 void ultrasons()
 {
   digitalWrite(PIN_ULTRASONS_TRIG, HIGH);
-  
-  // délais de 10 µs
   delayMicroseconds (10); 
   digitalWrite(PIN_ULTRASONS_TRIG, LOW);
   
@@ -214,9 +201,9 @@ void ultrasons()
   duration = duration/2;
   float temps = duration/10000.0; 
   distUS = temps*SPEEDSOUND; //en cm
-  //Serial.print("DistanceUltrasons = ");
-  //Serial.println(distUS); //affiche la distance mesurée (en mètres)
   delay(250);
+  Serial.print("distance ultrasons---- ");
+  Serial.println(distUS);
 }
 
 
