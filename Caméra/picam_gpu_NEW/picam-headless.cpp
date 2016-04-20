@@ -327,24 +327,28 @@ int main(int argc, const char **argv) {
    float colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
 
    infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 0 : %f %f %f %f %f %f %f", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
    colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
    colpar[0].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[0].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
    colpar[0].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
 
    infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 1 : %f %f %f %f %f %f %f", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
    colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN
    colpar[1].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[1].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
    colpar[1].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
 
    infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 2 : %f %f %f %f %f %f %f", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
    colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE
    colpar[2].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[2].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
    colpar[2].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
 
    infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 3 : %f %f %f %f %f %f %f", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
    colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
    colpar[3].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[3].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
