@@ -430,7 +430,7 @@ int main(int argc, const char **argv) {
          int rtext = 7;
          int ctext = 10;
          XYB_TB centroid[1];
-         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0], &outputFile);
+         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0], outputFile);
       }
       EndFrame(CheckGL);
       CheckGL = false; // no more check
