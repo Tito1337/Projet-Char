@@ -214,7 +214,7 @@ void objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* c
     //mvprintw(rtext, ctext, "    Object:   n = %d,  position = (%3.1f, %3.1f),  k10 = %2.1f       ", n, centroid.Xb, centroid.Yb, k10);
     //centroid.Xb, centroid.Yb, k10
     file.seekp(0);
-    file << "Coucou!";
+    file << "X = " << centroid.Xb << "\r\nY = " << centroid.Yb << "\r\nn = " << n << "\r\n";
 }
 
 //entry point
