@@ -39,10 +39,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pi/picam_gpu_col5
+CMAKE_SOURCE_DIR = /home/pi/Projet-Char/Caméra/picam_gpu_NEW
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pi/picam_gpu_col5
+CMAKE_BINARY_DIR = /home/pi/Projet-Char/Caméra/picam_gpu_NEW
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -69,9 +69,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/picam_gpu_col5/CMakeFiles /home/pi/picam_gpu_col5/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/picam_gpu_col5/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,12 +111,26 @@ picam/fast:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/build
 .PHONY : picam/fast
 
+#=============================================================================
+# Target rules for targets named picam-headless
+
+# Build rule for target.
+picam-headless: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 picam-headless
+.PHONY : picam-headless
+
+# fast build rule for target.
+picam-headless/fast:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/build
+.PHONY : picam-headless/fast
+
 camera.o: camera.cpp.o
 .PHONY : camera.o
 
 # target to build an object file
 camera.cpp.o:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/camera.cpp.o
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/camera.cpp.o
 .PHONY : camera.cpp.o
 
 camera.i: camera.cpp.i
@@ -125,6 +139,7 @@ camera.i: camera.cpp.i
 # target to preprocess a source file
 camera.cpp.i:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/camera.cpp.i
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/camera.cpp.i
 .PHONY : camera.cpp.i
 
 camera.s: camera.cpp.s
@@ -133,6 +148,7 @@ camera.s: camera.cpp.s
 # target to generate assembly for a file
 camera.cpp.s:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/camera.cpp.s
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/camera.cpp.s
 .PHONY : camera.cpp.s
 
 cameracontrol.o: cameracontrol.cpp.o
@@ -141,6 +157,7 @@ cameracontrol.o: cameracontrol.cpp.o
 # target to build an object file
 cameracontrol.cpp.o:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/cameracontrol.cpp.o
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/cameracontrol.cpp.o
 .PHONY : cameracontrol.cpp.o
 
 cameracontrol.i: cameracontrol.cpp.i
@@ -149,6 +166,7 @@ cameracontrol.i: cameracontrol.cpp.i
 # target to preprocess a source file
 cameracontrol.cpp.i:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/cameracontrol.cpp.i
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/cameracontrol.cpp.i
 .PHONY : cameracontrol.cpp.i
 
 cameracontrol.s: cameracontrol.cpp.s
@@ -157,6 +175,7 @@ cameracontrol.s: cameracontrol.cpp.s
 # target to generate assembly for a file
 cameracontrol.cpp.s:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/cameracontrol.cpp.s
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/cameracontrol.cpp.s
 .PHONY : cameracontrol.cpp.s
 
 graphics.o: graphics.cpp.o
@@ -165,6 +184,7 @@ graphics.o: graphics.cpp.o
 # target to build an object file
 graphics.cpp.o:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/graphics.cpp.o
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/graphics.cpp.o
 .PHONY : graphics.cpp.o
 
 graphics.i: graphics.cpp.i
@@ -173,6 +193,7 @@ graphics.i: graphics.cpp.i
 # target to preprocess a source file
 graphics.cpp.i:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/graphics.cpp.i
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/graphics.cpp.i
 .PHONY : graphics.cpp.i
 
 graphics.s: graphics.cpp.s
@@ -181,6 +202,7 @@ graphics.s: graphics.cpp.s
 # target to generate assembly for a file
 graphics.cpp.s:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/graphics.cpp.s
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/graphics.cpp.s
 .PHONY : graphics.cpp.s
 
 lodepng.o: lodepng.cpp.o
@@ -189,6 +211,7 @@ lodepng.o: lodepng.cpp.o
 # target to build an object file
 lodepng.cpp.o:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/lodepng.cpp.o
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/lodepng.cpp.o
 .PHONY : lodepng.cpp.o
 
 lodepng.i: lodepng.cpp.i
@@ -197,6 +220,7 @@ lodepng.i: lodepng.cpp.i
 # target to preprocess a source file
 lodepng.cpp.i:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/lodepng.cpp.i
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/lodepng.cpp.i
 .PHONY : lodepng.cpp.i
 
 lodepng.s: lodepng.cpp.s
@@ -205,7 +229,32 @@ lodepng.s: lodepng.cpp.s
 # target to generate assembly for a file
 lodepng.cpp.s:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/lodepng.cpp.s
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/lodepng.cpp.s
 .PHONY : lodepng.cpp.s
+
+picam-headless.o: picam-headless.cpp.o
+.PHONY : picam-headless.o
+
+# target to build an object file
+picam-headless.cpp.o:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/picam-headless.cpp.o
+.PHONY : picam-headless.cpp.o
+
+picam-headless.i: picam-headless.cpp.i
+.PHONY : picam-headless.i
+
+# target to preprocess a source file
+picam-headless.cpp.i:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/picam-headless.cpp.i
+.PHONY : picam-headless.cpp.i
+
+picam-headless.s: picam-headless.cpp.s
+.PHONY : picam-headless.s
+
+# target to generate assembly for a file
+picam-headless.cpp.s:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/picam-headless.cpp.s
+.PHONY : picam-headless.cpp.s
 
 picam.o: picam.cpp.o
 .PHONY : picam.o
@@ -239,6 +288,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... picam"
+	@echo "... picam-headless"
 	@echo "... rebuild_cache"
 	@echo "... camera.o"
 	@echo "... camera.i"
@@ -252,6 +302,9 @@ help:
 	@echo "... lodepng.o"
 	@echo "... lodepng.i"
 	@echo "... lodepng.s"
+	@echo "... picam-headless.o"
+	@echo "... picam-headless.i"
+	@echo "... picam-headless.s"
 	@echo "... picam.o"
 	@echo "... picam.i"
 	@echo "... picam.s"

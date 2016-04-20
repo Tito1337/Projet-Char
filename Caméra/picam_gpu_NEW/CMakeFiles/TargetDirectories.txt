@@ -1,1 +1,2 @@
-/home/pi/picam_gpu_col5/CMakeFiles/picam.dir
+/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir
+/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir

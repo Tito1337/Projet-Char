@@ -6,65 +6,15 @@
 
 #IncludeRegexTransform: 
 
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/camera.cpp
-camera.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/camera.h
-stdio.h
--
-
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/camera.h
 mmalincludes.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/mmalincludes.h
 cameracontrol.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.h
 
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.cpp
-stdio.h
--
-memory.h
--
-interface/vcos/vcos.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/vcos/vcos.h
-interface/vmcs_host/vc_vchi_gencmd.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/vmcs_host/vc_vchi_gencmd.h
-interface/mmal/mmal.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/mmal.h
-interface/mmal/mmal_logging.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/mmal_logging.h
-interface/mmal/util/mmal_util.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/util/mmal_util.h
-interface/mmal/util/mmal_util_params.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/util/mmal_util_params.h
-interface/mmal/util/mmal_default_components.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/util/mmal_default_components.h
-cameracontrol.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.h
-
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.h
 interface/mmal/mmal.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/mmal.h
-
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/graphics.cpp
-stdio.h
--
-fcntl.h
--
-stdlib.h
--
-string.h
--
-math.h
--
-assert.h
--
-unistd.h
--
-iostream
--
-bcm_host.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/bcm_host.h
-graphics.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/graphics.h
 
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/graphics.h
 GLES2/gl2.h
@@ -75,16 +25,6 @@ EGL/eglext.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/EGL/eglext.h
 lodepng.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.h
-
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.cpp
-lodepng.h
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.h
-stdio.h
--
-stdlib.h
--
-fstream
--
 
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.h
 string.h
@@ -120,7 +60,7 @@ interface/mmal/util/mmal_default_components.h
 interface/mmal/util/mmal_connection.h
 /home/pi/Projet-Char/Caméra/picam_gpu_NEW/interface/mmal/util/mmal_connection.h
 
-/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam.cpp
+/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam-headless.cpp
 stdio.h
 -
 unistd.h
@@ -135,7 +75,7 @@ curses.h
 -
 complex
 -
-opencv2/core/core.hpp
+fstream
 -
 ft2build.h
 -
@@ -739,14 +679,6 @@ vc_hdmi.h
 /opt/vc/include/interface/vmcs_host/vc_hdmi.h
 vc_sdtv.h
 /opt/vc/include/interface/vmcs_host/vc_sdtv.h
-
-/opt/vc/include/interface/vmcs_host/vc_vchi_gencmd.h
-vchost_config.h
-/opt/vc/include/interface/vmcs_host/vchost_config.h
-interface/vchi/vchi.h
-/opt/vc/include/interface/vmcs_host/interface/vchi/vchi.h
-interface/vcos/vcos.h
-/opt/vc/include/interface/vmcs_host/interface/vcos/vcos.h
 
 /opt/vc/include/interface/vmcs_host/vcgencmd.h
 vchost_config.h

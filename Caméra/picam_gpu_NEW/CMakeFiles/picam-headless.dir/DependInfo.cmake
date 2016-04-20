@@ -4,11 +4,11 @@ SET(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 SET(CMAKE_DEPENDS_CHECK_CXX
-  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/camera.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir/camera.cpp.o"
-  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir/cameracontrol.cpp.o"
-  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/graphics.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir/graphics.cpp.o"
-  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir/lodepng.cpp.o"
-  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam.dir/picam.cpp.o"
+  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/camera.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir/camera.cpp.o"
+  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/cameracontrol.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir/cameracontrol.cpp.o"
+  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/graphics.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir/graphics.cpp.o"
+  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/lodepng.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir/lodepng.cpp.o"
+  "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam-headless.cpp" "/home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles/picam-headless.dir/picam-headless.cpp.o"
   )
 SET(CMAKE_CXX_COMPILER_ID "GNU")
 

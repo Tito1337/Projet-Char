@@ -47,10 +47,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pi/picam_gpu_col5
+CMAKE_SOURCE_DIR = /home/pi/Projet-Char/Caméra/picam_gpu_NEW
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pi/picam_gpu_col5
+CMAKE_BINARY_DIR = /home/pi/Projet-Char/Caméra/picam_gpu_NEW
 
 #=============================================================================
 # Target rules for target CMakeFiles/picam.dir
@@ -59,7 +59,7 @@ CMAKE_BINARY_DIR = /home/pi/picam_gpu_col5
 CMakeFiles/picam.dir/all:
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/depend
 	$(MAKE) -f CMakeFiles/picam.dir/build.make CMakeFiles/picam.dir/build
-	$(CMAKE_COMMAND) -E cmake_progress_report /home/pi/picam_gpu_col5/CMakeFiles  1 2 3 4 5
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles  1 2 3 4 5
 	@echo "Built target picam"
 .PHONY : CMakeFiles/picam.dir/all
 
@@ -69,9 +69,9 @@ all: CMakeFiles/picam.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/picam.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/picam_gpu_col5/CMakeFiles 5
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles 5
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/picam.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/picam_gpu_col5/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles 0
 .PHONY : CMakeFiles/picam.dir/rule
 
 # Convenience name for target.
@@ -85,6 +85,41 @@ CMakeFiles/picam.dir/clean:
 
 # clean rule for target.
 clean: CMakeFiles/picam.dir/clean
+.PHONY : clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/picam-headless.dir
+
+# All Build rule for target.
+CMakeFiles/picam-headless.dir/all:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/depend
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/build
+	$(CMAKE_COMMAND) -E cmake_progress_report /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles  6 7 8 9 10
+	@echo "Built target picam-headless"
+.PHONY : CMakeFiles/picam-headless.dir/all
+
+# Include target in all.
+all: CMakeFiles/picam-headless.dir/all
+.PHONY : all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/picam-headless.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles 5
+	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/picam-headless.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Projet-Char/Caméra/picam_gpu_NEW/CMakeFiles 0
+.PHONY : CMakeFiles/picam-headless.dir/rule
+
+# Convenience name for target.
+picam-headless: CMakeFiles/picam-headless.dir/rule
+.PHONY : picam-headless
+
+# clean rule for target.
+CMakeFiles/picam-headless.dir/clean:
+	$(MAKE) -f CMakeFiles/picam-headless.dir/build.make CMakeFiles/picam-headless.dir/clean
+.PHONY : CMakeFiles/picam-headless.dir/clean
+
+# clean rule for target.
+clean: CMakeFiles/picam-headless.dir/clean
 .PHONY : clean
 
 #=============================================================================
