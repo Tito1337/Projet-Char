@@ -38,11 +38,11 @@ int speedR;
 //Ultra-sons
 float distUS;
 //PID
-double Setpoint, Input, Output,Setpoint1, Input1, Output1;
+double SetpointLin, InputLin, OutputLin,SetpointAng, InputAng, OutputAng;
 double OutputR,OutputL;
 //Specify the links and initial tuning parameters
-PID PIDlineaire(&Input, &Output, &Setpoint,2,5,0, DIRECT);
-PID PIDangulaire(&Input1, &Output1, &Setpoint1,2,1,0, DIRECT);
+PID PIDlineaire(&InputLin, &OutputLin, &SetpointLin,2,5,0, DIRECT);
+PID PIDangulaire(&InputAng, &OutputAng, &SetpointAng,2,1,0, DIRECT);
 
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
@@ -61,35 +61,29 @@ void Moteurs_setup() {
 
   PIDlineaire.SetMode(AUTOMATIC); //turn on the PID 
   PIDangulaire.SetMode(AUTOMATIC);
-  Input=0;
-  attachInterrupt(0, roueCodeuse, CHANGE);
-  attachInterrupt(1, roueCodeuse, CHANGE);
-  Setpoint1 = 0;
-  OutputR = constrain(OutputR, -100, 150);
-  OutputL = constrain(OutputL, -100, 150);
-
+  InputLin=0;
+  //Gestion des interruptions.Dans l'arduino UNO il existe deux pins dédiées à l'intérruption la 2 et la 3
+  attachInterrupt(0, roueCodeuse, CHANGE); // le 0 correspond à la pin 2
+  attachInterrupt(1, roueCodeuse, CHANGE); //le 1 correspond à la pin 3
+  SetpointAng = 500; 
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
 void Moteurs_loop() {
   motorManagement();
   ultrasons();
-  //PIDangulaire.Compute();
- // PIDlineaire.Compute();
-  Serial.print("Setpoint----");
-  Serial.println(Setpoint);
-  Serial.print("Setpoint1----");
-  Serial.println(Setpoint1);
-  Serial.print("output----");
-  Serial.println(Output);
-  Serial.print("output1----");
-  Serial.println(Output1);
-  Serial.print("outputR----");
-  Serial.println(OutputR);
-  Serial.print("Input----");
-  Serial.println(Input);
-  Serial.print("Input1----");
-  Serial.println(Input1);
+  Serial.print("SetpointLin----");
+  Serial.println(SetpointLin);
+  Serial.print("SetpointAng----");
+  Serial.println(SetpointAng);
+  Serial.print("outputLin----");
+  Serial.println(OutputLin);
+  Serial.print("outputAng----");
+  Serial.println(OutputAng);
+  Serial.print("InputLin----");
+  Serial.println(InputLin);
+  Serial.print("InputAng----");
+  Serial.println(InputAng);
 }
 
 // regulateMotors se charge de réguler la vitesse des moteurs pour atteindre l'objectif de distance fixé
@@ -116,7 +110,6 @@ void motorManagement() {
       digitalWrite(PIN_DIR_L1, 0);
       analogWrite(PIN_PWM_L, OutputL);     
     }
-
 
     if(directionR == FORWARD) {     
       analogWrite(PIN_PWM_R, OutputR);
@@ -146,10 +139,11 @@ void roueCodeuse() {
     comptR++;
     lastComptR = !lastComptR;
   }
-  Input=(comptR+comptL)/2;
-  Input1=(comptR-comptL);
-  OutputR = Output + Output1;
-  OutputL = Output - Output1;
+  //Voir image du PID régulation dans la documentation
+  InputLin=(comptR+comptL)/2;
+  InputAng=(comptR-comptL);
+  OutputR = OutputLin + OutputAng;
+  OutputL = OutputLin - OutputAng;
   PIDangulaire.Compute();
   PIDlineaire.Compute();
 }
@@ -162,7 +156,7 @@ void doMove(float left, float right, float speed) {
   // On ajoute le nombre de count des roues codeuses au target
   comptTargetR += absRight/CM_TO_COUNT_RATIO;
   comptTargetL += absLeft/CM_TO_COUNT_RATIO;
-  Setpoint = comptTargetR;
+  SetpointLin = comptTargetR;
   // On choisit la bonne direction pour chaque roue
   if(right<0) {
     directionR = BACKWARD;
