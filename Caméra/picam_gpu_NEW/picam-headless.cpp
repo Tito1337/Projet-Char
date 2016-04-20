@@ -12,6 +12,8 @@
 #include <time.h>
 #include <curses.h>
 #include <complex>
+#include <fstream>
+
 
 // for text
 #include <ft2build.h>  // need  include_directories(/usr/include/freetype2)  in file  CMakeLists.txt
@@ -320,7 +322,9 @@ int main(int argc, const char **argv) {
    currcomp=0; // current editable component (selected with 'r', 'g' or 'b')
    currminmax=0; // current editable by '<' or '>' is: 0:min 1:max
 
-   colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
+   ifstream infile("settings.csv");
+
+   /*colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
    colpar[0].setMain( 1             ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[0].setMin ( .3, 0 , 1 , 0 ); // rgba  G and B relative to R
    colpar[0].setMax ( 1 , 1, 1.35, 1 ); // rgba  G and B relative to R
@@ -338,7 +342,7 @@ int main(int argc, const char **argv) {
    colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
    colpar[3].setMain(       2       ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[3].setMin ( 0,  0,  0 , 0 ); // rgba  G and B relative to R
-   colpar[3].setMax (100, .376, 100,  1 ); // rgba  G and B relative to R
+   colpar[3].setMax (100, .376, 100,  1 ); // rgba  G and B relative to R*/
 
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
