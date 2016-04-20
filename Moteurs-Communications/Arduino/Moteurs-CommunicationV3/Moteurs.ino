@@ -1,11 +1,3 @@
-#include <PID_v1.h>
-#include <Time.h>
-// PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
-// Set point sera un distance à atteindre, la consigne.
-// Input la distance à laquelle on se trouve
-// Output la valeur de PWM
-
-
 // Définition des pins Arduino
 #define PIN_DIR_L1 4 // Sélecteur de direction 1 du moteur L
 #define PIN_PWM_L 10 // PWM pour régler la vitesse du moteur L
@@ -17,33 +9,25 @@
 #define PIN_ULTRASONS_ECHO 9 // Capteur ultrasons 
 
 // Autres constantes
-#define CM_TO_COUNT_RATIO 0.1 // Nombre de centimètres par compte des roues codeuses
-#define SPEEDSOUND 340 // Vitesse du son en m/s
+#define CM_TO_COUNT_RATIO 0.44 // Nombre de centimètres par compte des roues codeuses
 #define FORWARD 1
 #define BACKWARD 0
-
+#define SPEEDSOUND 340 // Vitesse du son en m/s
 // Variables globales
-//Roue codeuse
 long comptL = 0;
 long comptR = 0;
 bool lastComptL = LOW;
 bool lastComptR = LOW;
 long comptTargetL = 0;
 long comptTargetR = 0;
-//Moteurs
+
 int directionL = FORWARD;
 int directionR = FORWARD;
 int speedL;
-int speedR;
-//Ultra-sons
-float distUS;
-//PID
-double Setpoint, Input, Output,Setpoint1, Input1, Output1;
-double OutputR,OutputL;
-//Specify the links and initial tuning parameters
-PID PIDlineaire(&Input, &Output, &Setpoint,2,5,0, DIRECT);
-PID PIDangulaire(&Input1, &Output1, &Setpoint1,2,1,0, DIRECT);
+int speedR ;
 
+
+float distUS;
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
 void Moteurs_setup() {
@@ -59,37 +43,13 @@ void Moteurs_setup() {
   pinMode(PIN_ULTRASONS_TRIG,OUTPUT);
   pinMode(PIN_ULTRASONS_ECHO, INPUT);
 
-  PIDlineaire.SetMode(AUTOMATIC); //turn on the PID 
-  PIDangulaire.SetMode(AUTOMATIC);
-  Input=0;
-  attachInterrupt(0, roueCodeuse, CHANGE);
-  attachInterrupt(1, roueCodeuse, CHANGE);
-  Setpoint1 = 0;
-  OutputR = constrain(OutputR, -100, 150);
-  OutputL = constrain(OutputL, -100, 150);
-
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
 void Moteurs_loop() {
+  roueCodeuse();
   motorManagement();
   ultrasons();
-  //PIDangulaire.Compute();
- // PIDlineaire.Compute();
-  Serial.print("Setpoint----");
-  Serial.println(Setpoint);
-  Serial.print("Setpoint1----");
-  Serial.println(Setpoint1);
-  Serial.print("output----");
-  Serial.println(Output);
-  Serial.print("output1----");
-  Serial.println(Output1);
-  Serial.print("outputR----");
-  Serial.println(OutputR);
-  Serial.print("Input----");
-  Serial.println(Input);
-  Serial.print("Input1----");
-  Serial.println(Input1);
 }
 
 // regulateMotors se charge de réguler la vitesse des moteurs pour atteindre l'objectif de distance fixé
@@ -99,35 +59,49 @@ void motorManagement() {
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetL);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(OutputL);
-
+  DEBUG_PRINTLN(speedL);
+  if (distUS > 15){
+  
+  //analogWrite(PIN_PWM_L, speedMotorManagementL);
+  
+  
+  if(comptTargetL > comptL) {
+    if(directionL == FORWARD) {
+      digitalWrite(PIN_DIR_L1, 1);
+       analogWrite(PIN_PWM_L, speedL);
+    } else {
+      digitalWrite(PIN_DIR_L1, 0);
+      analogWrite(PIN_PWM_L, speedL);     
+    }
+    } else {
+      analogWrite(PIN_PWM_L, 0);
+      Serial.println("distance atteinte L ");
+  }
+ 
 
   DEBUG_PRINT("RIGHT : ");
   DEBUG_PRINT(comptR);
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetR);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(OutputR);
-  if (distUS > 15){
-    if(directionL == FORWARD) {
-      digitalWrite(PIN_DIR_L1, 1);
-       analogWrite(PIN_PWM_L, OutputL);
-    } else {
-      digitalWrite(PIN_DIR_L1, 0);
-      analogWrite(PIN_PWM_L, OutputL);     
-    }
-
-
-    if(directionR == FORWARD) {     
-      analogWrite(PIN_PWM_R, OutputR);
+  DEBUG_PRINTLN(speedR);
+  
+  //analogWrite(PIN_PWM_R, speedMotorManagementR);
+  if(comptTargetR > comptR) {
+    if(directionR == FORWARD) {
+      analogWrite(PIN_PWM_R, speedR);
       digitalWrite(PIN_DIR_R1, 1);
     } else {
       digitalWrite(PIN_DIR_R1, 0);
-      analogWrite(PIN_PWM_R, OutputR);    
+      analogWrite(PIN_PWM_R, speedR);    
     }
+  } else {
+     analogWrite(PIN_PWM_R, 0);
+     Serial.println("distance atteinte R ");      
+  }
   }
  else {
-   Serial.println("La distance est moins de 15cm ");
+     Serial.println("La distance est moins de 15cm ");
    analogWrite(PIN_PWM_L, 0);
    analogWrite(PIN_PWM_R, 0);
   }
@@ -136,34 +110,29 @@ void motorManagement() {
 // updateCodingWheels met à jour comptL et comptR si les roues codeuses respectives ont tourné
 void roueCodeuse() {
   // Compter uniquement si la mesure est différente de la dernière
-  
   if (digitalRead(PIN_COUNTER_L) != lastComptL) {
-    comptL++;
+    comptL += 1;
     lastComptL = !lastComptL;
+    Serial.println("je compte le gauche");
   }
 
   if (digitalRead(PIN_COUNTER_R) != lastComptR) {
-    comptR++;
+    comptR += 1;
     lastComptR = !lastComptR;
+    Serial.println("je compte le droit");
   }
-  Input=(comptR+comptL)/2;
-  Input1=(comptR-comptL);
-  OutputR = Output + Output1;
-  OutputL = Output - Output1;
-  PIDangulaire.Compute();
-  PIDlineaire.Compute();
 }
 
 // Fonction recevant l'ordre de se déplacer. right et left en cm (positif = en avant, négatif = en arrière). speed en pourcents (0 à 100)
-void doMove(float left, float right, float speed) {
+void doMove(float right, float left, float speed) {
   float absRight = abs(right);
   float absLeft = abs(left);
   
   // On ajoute le nombre de count des roues codeuses au target
   comptTargetR += absRight/CM_TO_COUNT_RATIO;
   comptTargetL += absLeft/CM_TO_COUNT_RATIO;
-  Setpoint = comptTargetR;
-  // On choisit la bonne direction pour chaque roue
+
+  // On chosit la bonne direction pour chaque roue
   if(right<0) {
     directionR = BACKWARD;
   } else {
@@ -186,11 +155,12 @@ void doMove(float left, float right, float speed) {
   Serial.print("la vitesse du debug est de ");
   Serial.println(speedL);
 }
-
 //Fonction calculant la distance entre un objet et le robot pour ainsi arrêter le robot en urgence avant la percution. 
 void ultrasons()
 {
   digitalWrite(PIN_ULTRASONS_TRIG, HIGH);
+  
+  // délais de 10 µs
   delayMicroseconds (10); 
   digitalWrite(PIN_ULTRASONS_TRIG, LOW);
   
@@ -201,9 +171,7 @@ void ultrasons()
   duration = duration/2;
   float temps = duration/10000.0; 
   distUS = temps*SPEEDSOUND; //en cm
+  Serial.print("DistanceUltrasons = ");
+  Serial.println(distUS); //affiche la distance mesurée (en mètres)
   delay(250);
-  Serial.print("distance ultrasons---- ");
-  Serial.println(distUS);
 }
-
-
