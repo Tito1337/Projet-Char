@@ -320,7 +320,7 @@ int main(int argc, const char **argv) {
    currcomp=0; // current editable component (selected with 'r', 'g' or 'b')
    currminmax=0; // current editable by '<' or '>' is: 0:min 1:max
 
-   if(argc != 1) {
+   if(argc != 2) {
       printf("ERREUR : Veuillez fournir un fichier de filtre en argument\r\n");
       return 1;
    }
