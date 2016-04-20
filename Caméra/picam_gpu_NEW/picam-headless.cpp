@@ -328,7 +328,7 @@ int main(int argc, const char **argv) {
    std::ifstream infile(argv[1]);
    double colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
 
-   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+/*   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
    printf("Settings 0 : %f %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
    colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
    colpar[0].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
@@ -354,7 +354,27 @@ int main(int argc, const char **argv) {
    colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
    colpar[3].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[3].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
-   colpar[3].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
+   colpar[3].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R*/
+      colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
+   colpar[0].setMain( 1             ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[0].setMin ( .3, 0 , 0 , 0 ); // rgba  G and B relative to R
+   colpar[0].setMax ( 1 , .5, .5, 1 ); // rgba  G and B relative to R
+
+   colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN
+   colpar[1].setMain(     2         ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[1].setMin ( 0 , .3, 0 , 0 ); // rgba  R and B relative to G
+   colpar[1].setMax ( .5, 1 , .5, 1 ); // rgba  R and B relative to G
+
+   colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE
+   colpar[2].setMain(         3     ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[2].setMin ( 0 , 0 , .3, 0 ); // rgba  R and G relative to B
+   colpar[2].setMax ( .5, .5, 1 , 1 ); // rgba  R and G relative to B
+
+   colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
+   colpar[3].setMain(       2       ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[3].setMin ( 0,  0,  0 , 0 ); // rgba  G and B relative to R
+   colpar[3].setMax (100, .376, 100,  1 ); // rgba  G and B relative to R
+
 
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
