@@ -321,10 +321,7 @@ int main(int argc, const char **argv) {
    currminmax=0; // current editable by '<' or '>' is: 0:min 1:max
 
    std::ifstream infile("settings.conf");
-   std::string line;
-   std::getline(infile,line);
-
-   float colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
+   double colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
 
    infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
    printf("Settings 0 : %f %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
