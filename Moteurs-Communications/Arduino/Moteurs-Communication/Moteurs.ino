@@ -1,5 +1,6 @@
 #include <PID_v1.h>
 #include <Time.h>
+#include <Arduino.h>
 // PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 // Set point sera un distance à atteindre, la consigne.
 // Input la distance à laquelle on se trouve
@@ -13,6 +14,8 @@
 #define PIN_PWM_R 11 // PWM pour régler la vitesse du moteur R
 #define PIN_COUNTER_L 2 // Roue codeuse du moteur L
 #define PIN_COUNTER_R 3 // Roue codeuse du moteur R
+#define PIN_COUNTER_DIRECTION_L 12 // Direction Roue codeuse du moteur L
+#define PIN_COUNTER_DIRECTION_R 13 // Direction Roue codeuse du moteur R
 #define PIN_ULTRASONS_TRIG 8 // Capteur ultrasons 
 #define PIN_ULTRASONS_ECHO 9 // Capteur ultrasons 
 
@@ -33,16 +36,16 @@ long comptTargetR = 0;
 //Moteurs
 int directionL = FORWARD;
 int directionR = FORWARD;
-int speedL;
-int speedR;
+int SpeedR;
+int SpeedL;
 //Ultra-sons
 float distUS;
 //PID
 double SetpointLin, InputLin, OutputLin,SetpointAng, InputAng, OutputAng;
 double OutputR,OutputL;
 //Specify the links and initial tuning parameters
-PID PIDlineaire(&InputLin, &OutputLin, &SetpointLin,2,5,0, DIRECT);
-PID PIDangulaire(&InputAng, &OutputAng, &SetpointAng,2,1,0, DIRECT);
+PID PIDlineaire(&InputLin, &OutputLin, &SetpointLin,2,5,0, RISING);
+PID PIDangulaire(&InputAng, &OutputAng, &SetpointAng,2,1,0, RISING);
 
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
@@ -65,7 +68,7 @@ void Moteurs_setup() {
   //Gestion des interruptions.Dans l'arduino UNO il existe deux pins dédiées à l'intérruption la 2 et la 3
   attachInterrupt(0, roueCodeuse, CHANGE); // le 0 correspond à la pin 2
   attachInterrupt(1, roueCodeuse, CHANGE); //le 1 correspond à la pin 3
-  SetpointAng = 500; 
+  SetpointAng = 0;
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
@@ -93,7 +96,7 @@ void motorManagement() {
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetL);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(OutputL);
+  DEBUG_PRINTLN(SpeedL);
 
 
   DEBUG_PRINT("RIGHT : ");
@@ -101,23 +104,21 @@ void motorManagement() {
   DEBUG_PRINT(" / ");
   DEBUG_PRINT(comptTargetR);
   DEBUG_PRINT(" @ ");
-  DEBUG_PRINTLN(OutputR);
+  DEBUG_PRINTLN(SpeedR);
+  
   if (distUS > 15){
-    if(directionL == FORWARD) {
+    if(SpeedL > 0){
       digitalWrite(PIN_DIR_L1, 1);
-       analogWrite(PIN_PWM_L, OutputL);
     } else {
-      digitalWrite(PIN_DIR_L1, 0);
-      analogWrite(PIN_PWM_L, OutputL);     
-    }
-
-    if(directionR == FORWARD) {     
-      analogWrite(PIN_PWM_R, OutputR);
+      digitalWrite(PIN_DIR_L1, 0);          
+    }      
+    if(SpeedR > 0) {           
       digitalWrite(PIN_DIR_R1, 1);
     } else {
-      digitalWrite(PIN_DIR_R1, 0);
-      analogWrite(PIN_PWM_R, OutputR);    
+      digitalWrite(PIN_DIR_R1, 0);        
     }
+    analogWrite(PIN_PWM_R, SpeedR);
+    analogWrite(PIN_PWM_L, SpeedL);   
   }
  else {
    Serial.println("La distance est moins de 15cm ");
@@ -127,9 +128,34 @@ void motorManagement() {
 }
 
 // updateCodingWheels met à jour comptL et comptR si les roues codeuses respectives ont tourné
+/*void roueCodeuseL() {
+  if (digitalRead(PIN_COUNTER_DIRECTION_L) == digitalRead(PIN_COUNTER_L)) {
+    comptL++;
+  }else {
+    comptL--;
+  }
+  InputLin=(comptR+comptL)/2;
+  InputAng=(comptR-comptL);
+  SpeedR = OutputLin + OutputAng;
+  SpeedL = OutputLin - OutputAng;
+  PIDangulaire.Compute();
+  PIDlineaire.Compute();
+}
+void roueCodeuseR() {
+  if (digitalRead(PIN_COUNTER_DIRECTION_R )==digitalRead( PIN_COUNTER_R )) {
+    comptR++;
+  }else {
+    comptR--;
+  }
+  InputLin=(comptR+comptL)/2;
+  InputAng=(comptR-comptL);
+  SpeedR = OutputLin + OutputAng;
+  SpeedL = OutputLin - OutputAng;
+  PIDangulaire.Compute();
+  PIDlineaire.Compute();
+}*/
 void roueCodeuse() {
   // Compter uniquement si la mesure est différente de la dernière
-  
   if (digitalRead(PIN_COUNTER_L) != lastComptL) {
     comptL++;
     lastComptL = !lastComptL;
@@ -142,8 +168,8 @@ void roueCodeuse() {
   //Voir image du PID régulation dans la documentation
   InputLin=(comptR+comptL)/2;
   InputAng=(comptR-comptL);
-  OutputR = OutputLin + OutputAng;
-  OutputL = OutputLin - OutputAng;
+  SpeedR = OutputLin + OutputAng;
+  SpeedL = OutputLin - OutputAng;
   PIDangulaire.Compute();
   PIDlineaire.Compute();
 }
@@ -157,28 +183,8 @@ void doMove(float left, float right, float speed) {
   comptTargetR += absRight/CM_TO_COUNT_RATIO;
   comptTargetL += absLeft/CM_TO_COUNT_RATIO;
   SetpointLin = comptTargetR;
-  // On choisit la bonne direction pour chaque roue
-  if(right<0) {
-    directionR = BACKWARD;
-  } else {
-    directionR = FORWARD;
-  }
-  if(left<0) {
-    directionL = BACKWARD;
-  } else {
-    directionL = FORWARD;
-  }
- 
-  // Adaptation basique de la vitesse 
-  if(absRight>absLeft) { 
-    speedR = 2.55*speed;
-    speedL = 2.55*speed/(absRight/absLeft);
-  } else {
-    speedL = 2.55*speed;
-    speedR = 2.55*speed/(absLeft/absRight);
-  }
-  Serial.print("la vitesse du debug est de ");
-  Serial.println(speedL);
+  SpeedR = speed;
+  SpeedL = speed;
 }
 
 //Fonction calculant la distance entre un objet et le robot pour ainsi arrêter le robot en urgence avant la percution. 
