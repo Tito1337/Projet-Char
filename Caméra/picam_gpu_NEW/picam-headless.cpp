@@ -17,6 +17,8 @@
 #include <ft2build.h>  // need  include_directories(/usr/include/freetype2)  in file  CMakeLists.txt
 #include FT_FREETYPE_H
 
+#include <tinyxml.h>
+
 #define TEXTURE_GRID_COLS 4
 #define TEXTURE_GRID_ROWS 4
 #define PSEUDOMIPMAPLEVELS 6
@@ -320,13 +322,13 @@ int main(int argc, const char **argv) {
 
    colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
    colpar[0].setMain( 1             ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
-   colpar[0].setMin ( .3, 0 , 0 , 0 ); // rgba  G and B relative to R
-   colpar[0].setMax ( 1 , .5, .5, 1 ); // rgba  G and B relative to R
+   colpar[0].setMin ( .3, 0 , 1 , 0 ); // rgba  G and B relative to R
+   colpar[0].setMax ( 1 , 1, 1.35, 1 ); // rgba  G and B relative to R
 
    colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN
    colpar[1].setMain(     2         ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
    colpar[1].setMin ( 0 , .3, 0 , 0 ); // rgba  R and B relative to G
-   colpar[1].setMax ( .5, 1 , .5, 1 ); // rgba  R and B relative to G
+   colpar[1].setMax ( .68, 1 , .5, 1 ); // rgba  R and B relative to G
 
    colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE
    colpar[2].setMain(         3     ); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
