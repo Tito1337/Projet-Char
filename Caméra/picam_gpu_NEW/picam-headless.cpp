@@ -360,7 +360,6 @@ int main(int argc, const char **argv) {
 
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
-   int setmode = 0; // Jeremy Bartholomeus
 
    // Main loop
    while(true) {
@@ -422,70 +421,14 @@ int main(int argc, const char **argv) {
             }
          } else {
             if(GfxTexture* tex = texture_grid[selected_texture]) { // Jérémy Bartholomeus
-               if(setmode == 1) { // Jérémy Bartholomeus
-                  //X150416 DrawTextureRect(tex,-1,-1,1,1,CheckGL, NULL);
-                  DrawTextureRect(tex,-1,1,1,-1,CheckGL, NULL);
-                  // A first zone of interest  (for red object)                //   0 1 2 3 4 5 6 7 8 9¹0¹1
-                  int level = 1; // 3 = (12x8)   1 = (48x24)                   // 0 . . . . . . . . . . . .
-                  int r0=25;     // first row of polygonal zone where is object// 1 . . . ? ? ? . . . . . .
-                  int cFirst[] = {30, 29, 28, 29, 30};                         // 2 . . ? ? ? ? ? . . . . .
-                  int cLast[]  = {31, 32, 33, 32, 31};                         // 3 . ? ? ? Ø Ø ? ? . . . .
-                  int nr = sizeof(cFirst)/sizeof(cFirst[0]);                   // 4 . ? ? ? Ø Ø ? ? . . . .
-                  int icolor=3; // 0: first color for object to detect (red)   // 5 . . ? ? ? ? ? . . . . .
-                  int k10max = 20;                                             // 6 . . . ? ? ? . . . . . .
-                  int textcolor = 3; // 3:red, 5:green, 7:blue                 // 7 . . . . . . . . . . . .
-                  int rtext = 6;
-                  int ctext = 10;
-                  XYB_TB centroid[4]; // struct XYB_TB defined above
-                  objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0]);
-
-                  // A second zone of interest  (for a green object)
-                  level = 1; // (48x24)
-                  r0=21;     // first row of polygonal zone where is object
-                  int cFirst1[] = {9, 8,  7, 8, 9};
-                  int cLast1[]  = {10, 11, 12, 11, 10};
-                  nr = sizeof(cFirst1)/sizeof(cFirst1[0]);
-                  icolor=3; // 1: second color for object to detect (green)
-                  k10max = 20;
-                  textcolor = 5; // 3:red, 5:green, 7:blue
-                  rtext = 7;
-                  ctext = 10;
-                  objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst1, cLast1, k10max, textcolor, rtext, ctext, centroid[1]);
-
-                  // A third zone of interest  (for a blue object)
-                  level = 1; // (48x24)
-                  r0=8;     // first row of polygonal zone where is object
-                  int cFirst2[] = {11, 10,  9, 10, 11};
-                  int cLast2[]  = {12, 13, 14, 13, 12};
-                  nr = sizeof(cFirst2)/sizeof(cFirst2[0]);
-                  icolor=3; // 2: third color for object to detect (blue)
-                  k10max = 20;
-                  textcolor = 7; // 3:red, 5:green, 7:blue
-                  rtext = 8;
-                  ctext = 10;
-                  objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst2, cLast2, k10max, textcolor, rtext, ctext, centroid[2]);
-
-                  // A fourth zone of interest (for a black point)
-                  level = 1;
-                  r0=14;
-                  int cFirst3[] = {40, 39, 38, 39, 40};
-                  int cLast3[]  = {41, 42, 43, 42, 41};
-                  nr = sizeof(cFirst3)/sizeof(cFirst3[0]);
-                  icolor=3; // 3: fourth color for object to detect (black)
-                  k10max = 20;
-                  textcolor = 7; // 3:red, 5:green, 7:blue
-                  rtext = 9;
-                  ctext = 10;
-                  objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst3, cLast3, k10max, textcolor, rtext, ctext, centroid[3]);
-               } else if(setmode == 0) { //Jérémy Bartholomeus
                   //X150416 DrawTextureRect(tex,-1,-1,1,1,CheckGL, NULL);
                   DrawTextureRect(tex,-1,1,1,-1,CheckGL, NULL);
 
                   // zone of interest  (for a green object)
                   int level = 1; // (48x24)
                   int r0=6;     // first row of polygonal zone where is object
-                  int cFirst[] = {  1,   1,   1,   1,   1,  1,   1,   1,   1,   1,  1,   1,   1,   1,   1,  1,   1,   1,   1,   1,  1};
-                  int cLast[]  = {45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45};
+                  int cFirst[] = { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0};
+                  int cLast[]  = {47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47};
                   int nr = sizeof(cFirst)/sizeof(cFirst[0]);
                   int icolor=1; // 1: second color for object to detect (green)
                   int k10max = 20;
@@ -494,7 +437,6 @@ int main(int argc, const char **argv) {
                   int ctext = 10;
                   XYB_TB centroid[1];
                   objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0]);
-               }
             }
          }
       } else {
