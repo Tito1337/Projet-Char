@@ -153,7 +153,7 @@ void interestZoneOutline(int level, int r0, int nr, int* cFirst, int* cLast, GLf
     }
 }
 
-void objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* cFirst, int* cLast, float k10max, int textcolor, int rtext, int ctext, XYB_TB centroid) {
+void objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* cFirst, int* cLast, float k10max, int textcolor, int rtext, int ctext, XYB_TB centroid, std::ofstream &file) {
    /* Bouw polygon around zone of interest, compute position of object, draw it and print results
     * IN:  icolor    index of color  [0-3]
     *      tex       texture content from col_nsss_cccc_textures[level]
@@ -211,9 +211,10 @@ void objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* c
         }
         else DrawPolygon(vertices, polylength, GL_LINES, 1, colwhite, CheckGL); // draw cross at centroid
     }
-    attron(COLOR_PAIR(textcolor));
-    mvprintw(rtext, ctext, "    Object:   n = %d,  position = (%3.1f, %3.1f),  k10 = %2.1f       ", n, centroid.Xb, centroid.Yb, k10); // gng: perhaps problem with \n if I well understand  http://repo.hackerzvoice.net/depot_madchat/coding/c/c.scene/cs3/CS3-08.html
-    attroff(COLOR_PAIR(textcolor));
+    //mvprintw(rtext, ctext, "    Object:   n = %d,  position = (%3.1f, %3.1f),  k10 = %2.1f       ", n, centroid.Xb, centroid.Yb, k10);
+    //centroid.Xb, centroid.Yb, k10
+    file.seekp(0);
+    file << "Coucou!";
 }
 
 //entry point
@@ -359,6 +360,9 @@ int main(int argc, const char **argv) {
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
 
+   std::ofstream outputFile;
+   outputFile.open("out.txt");
+
    // Main loop
    while(true) {
       //spin until we have a camera frame
@@ -426,7 +430,7 @@ int main(int argc, const char **argv) {
          int rtext = 7;
          int ctext = 10;
          XYB_TB centroid[1];
-         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0]);
+         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0], &outputFile);
       }
       EndFrame(CheckGL);
       CheckGL = false; // no more check
