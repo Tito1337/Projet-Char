@@ -226,6 +226,45 @@ int main(int argc, const char **argv) {
    float step = 0.01; // step for min or max change
    char filename[200];
    InitGraphics(); //init graphics and the camera
+
+   // Christophe De Wolf : Load filters from file
+   if(argc < 2) {
+      printf("ERREUR : Veuillez fournir un fichier de filtre en argument\r\n");
+      return 1;
+   }
+
+   std::ifstream infile(argv[1]);
+   int colMain;
+   float colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
+
+   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 0 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
+   colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
+   colpar[0].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[0].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
+   colpar[0].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
+
+   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 1 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
+   colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN
+   colpar[1].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[1].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
+   colpar[1].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
+
+   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 2 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
+   colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE
+   colpar[2].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[2].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
+   colpar[2].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
+
+   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
+   printf("Settings 3 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
+   colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
+   colpar[3].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
+   colpar[3].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
+   colpar[3].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
+
    CCamera* cam = StartCamera(MAIN_TEXTURE_WIDTH, MAIN_TEXTURE_HEIGHT,15,1,false); // 15 frames/s
 
    //create 4 textures of decreasing size
@@ -279,8 +318,6 @@ int main(int argc, const char **argv) {
 
    float texture_grid_col_size = 2.f/TEXTURE_GRID_COLS;
    float texture_grid_row_size = 2.f/TEXTURE_GRID_ROWS;
-   //int selected_texture = -1;
-   int selected_texture = 0;
 
    printf("Running frame loop\n");
 
@@ -294,7 +331,6 @@ int main(int argc, const char **argv) {
    start_time = gettime_now.tv_nsec ;
    start_time_t = gettime_now.tv_sec ;
    double total_time_s = 0;
-   bool do_pipeline = false;
 
    initscr();      /* initialize the curses library */
    start_color();  /* Start color for characters on screen */
@@ -319,44 +355,6 @@ int main(int argc, const char **argv) {
    currcol=0; // current editable col (selected with 'x', 'y', 'z' or 'w')
    currcomp=0; // current editable component (selected with 'r', 'g' or 'b')
    currminmax=0; // current editable by '<' or '>' is: 0:min 1:max
-
-   if(argc != 2) {
-      printf("ERREUR : Veuillez fournir un fichier de filtre en argument\r\n");
-      return 1;
-   }
-
-   std::ifstream infile(argv[1]);
-   int colMain;
-   float colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;
-
-   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
-   printf("Settings 0 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
-   colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number
-   colpar[0].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
-   colpar[0].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
-   colpar[0].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
-
-   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
-   printf("Settings 1 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
-   colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN
-   colpar[1].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
-   colpar[1].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
-   colpar[1].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
-
-   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
-   printf("Settings 2 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
-   colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE
-   colpar[2].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
-   colpar[2].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
-   colpar[2].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
-
-   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;
-   printf("Settings 3 : %d %f %f %f %f %f %f\r\n", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);
-   colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK
-   colpar[3].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main
-   colpar[3].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R
-   colpar[3].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R
-
 
    int awbmode = 1; // gng
    int exposuremode = 0; // gng
@@ -406,49 +404,30 @@ int main(int argc, const char **argv) {
       for(int texidx = 2; texidx<PSEUDOMIPMAPLEVELS; texidx++)
          Col_k_cccc_TextureRect(&col_nsss_cccc_textures[texidx],-1.f,-1.f,1.f,1.f,CheckGL, &col_k_cccc_textures[texidx]);
 
-      if(!do_pipeline) {
-         if(selected_texture == -1) {
-            for(int row = 0; row < TEXTURE_GRID_ROWS; row++) {
-               for(int col = 0; col < TEXTURE_GRID_COLS; col++) {
-                  if(GfxTexture* tex = texture_grid[col+row*TEXTURE_GRID_COLS]) {
-                     if((row*TEXTURE_GRID_COLS + col) < next_texture_grid_entry) {
-                        float colx = -1.f+col*texture_grid_col_size;
-                        float rowy = -1.f+row*texture_grid_row_size;
-                        DrawTextureRect(tex,colx,rowy,colx+texture_grid_col_size,rowy+texture_grid_row_size,CheckGL, NULL);
-                     }
-                  }
-               }
-            }
-         } else {
-            if(GfxTexture* tex = texture_grid[selected_texture]) { // Jérémy Bartholomeus
-                  //X150416 DrawTextureRect(tex,-1,-1,1,1,CheckGL, NULL);
-                  DrawTextureRect(tex,-1,1,1,-1,CheckGL, NULL);
+      if(GfxTexture* tex = texture_grid[0]) { // Jérémy Bartholomeus
+         //X150416 DrawTextureRect(tex,-1,-1,1,1,CheckGL, NULL);
+         DrawTextureRect(tex,-1,1,1,-1,CheckGL, NULL);
 
-                  // zone of interest  (for a green object)
-                  int level = 1; // (48x24)
-                  int r0=6;     // first row of polygonal zone where is object
-                  int cFirst[] = { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0};
-                  int cLast[]  = {47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47};
-                  int nr = sizeof(cFirst)/sizeof(cFirst[0]);
-                  int icolor=1; // 1: second color for object to detect (green)
-                  int k10max = 20;
-                  int textcolor = 5; // 3:red, 5:green, 7:blue
-                  int rtext = 7;
-                  int ctext = 10;
-                  XYB_TB centroid[1];
-                  objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0]);
-            }
-         }
-      } else {
-         /*DrawMedianRect(&ytexture,-1.f,-1.f,1.f,1.f,&mediantexture);
-         DrawSobelRect(&mediantexture,-1.f,-1.f,1.f,1.f,&sobeltexture);
-         DrawErodeRect(&sobeltexture,-1.f,-1.f,1.f,1.f,&erodetexture);
-         //DrawDilateRect(&erodetexture,-1.f,-1.f,1.f,1.f,&dilatetexture);
-         DrawThreshRect(&erodetexture,-1.f,-1.f,1.f,1.f,0.05f,0.05f,0.05f,&threshtexture);
-         DrawTextureRect(&threshtexture,-1,-1,1,1,NULL);
-         */
+         // zone of interest  (for a green object)
+         int level = 1; // (48x24)
+         int r0=0;     // first row of polygonal zone where is object
+         int cFirst[] = { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                          0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                          0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                          0,  0};
+         int cLast[]  = {47, 47, 47, 47, 47, 47, 47, 47, 47, 47,
+                         47, 47, 47, 47, 47, 47, 47, 47, 47, 47,
+                         47, 47, 47, 47, 47, 47, 47, 47, 47, 47,
+                         47, 47};
+         int nr = sizeof(cFirst)/sizeof(cFirst[0]);
+         int icolor=1; // 1: second color for object to detect (green)
+         int k10max = 20;
+         int textcolor = 5; // 3:red, 5:green, 7:blue
+         int rtext = 7;
+         int ctext = 10;
+         XYB_TB centroid[1];
+         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0]);
       }
-
       EndFrame(CheckGL);
       CheckGL = false; // no more check
    }
