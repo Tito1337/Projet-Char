@@ -55,5 +55,9 @@ with I2CMaster() as bus:
         return bus.transaction(reading(address, size))
 
     if __name__ == '__main__':
+        picam_file = open('/tmp/picam-output', 'r')
         while True:
-            print("Coucou")
+            picam_string = picam_file.read()
+            picam_file.seek(0)
+            print(picam_string)
+            time.sleep(0.5)
