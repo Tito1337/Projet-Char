@@ -1,11 +1,13 @@
 #include <PID_v1.h>
 #include <Time.h>
 #include <Arduino.h>
+#include <Servo.h>
 // PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 // Set point sera un distance à atteindre, la consigne.
 // Input la distance à laquelle on se trouve
 // Output la valeur de PWM
 
+ 
 
 // Définition des pins Arduino
 #define PIN_DIR_L1 4 // Sélecteur de direction 1 du moteur L
@@ -47,6 +49,10 @@ double OutputR,OutputL;
 PID PIDlineaire(&InputLin, &OutputLin, &SetpointLin,2,5,0, DIRECT);
 PID PIDangulaire(&InputAng, &OutputAng, &SetpointAng,2,2,0, DIRECT);
 
+// Initialisation du canon
+Servo servoCanon;  // crée l'objet de type servo afin de controler ce dernier
+int pos = 0;    // initialisation de la position
+
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
 void Moteurs_setup() {
@@ -69,6 +75,9 @@ void Moteurs_setup() {
   attachInterrupt(0, roueCodeuseL, CHANGE); // le 0 correspond à la pin 2
   attachInterrupt(1, roueCodeuseR, CHANGE); //le 1 correspond à la pin 3
   //SetpointAng = 0;
+
+  // Canon
+  servoCanon.attach(12);  // attache la pin 12 à l'objet servo
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
@@ -95,6 +104,7 @@ void Moteurs_loop() {
 
 // regulateMotors se charge de réguler la vitesse des moteurs pour atteindre l'objectif de distance fixé
 void motorManagement() {
+    
   DEBUG_PRINT("LEFT : ");
   DEBUG_PRINT(comptL);
   DEBUG_PRINT(" / ");
@@ -236,4 +246,17 @@ void ultrasons()
   Serial.println(distUS);
 }
 
+// Gestion du tir et de l'acheminement des balles dans le canon
+void shoot(){ 
+  for(pos = 0; pos <= 180; pos += 1) // goes from 0 degrees to 180 degrees 
+  {                                  // in steps of 1 degree 
+    servoCanon.write(pos);              // tell servo to go to position in variable 'pos' 
+    delay(15);                       // waits 15ms for the servo to reach the position 
+  } 
+  for(pos = 180; pos>=0; pos-=1)     // goes from 180 degrees to 0 degrees 
+  {                                
+    servoCanon.write(pos);              // tell servo to go to position in variable 'pos' 
+    delay(15);                       // waits 15ms for the servo to reach the position 
+  } 
+} 
 
