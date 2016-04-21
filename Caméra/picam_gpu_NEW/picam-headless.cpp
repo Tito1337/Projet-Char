@@ -361,7 +361,7 @@ int main(int argc, const char **argv) {
    int exposuremode = 0; // gng
 
    std::ofstream outputFile;
-   outputFile.open("out.txt");
+   outputFile.open("/tmp/picam-output");
 
    // Main loop
    while(true) {
