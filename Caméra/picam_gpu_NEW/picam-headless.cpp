@@ -214,7 +214,7 @@ void objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* c
     //mvprintw(rtext, ctext, "    Object:   n = %d,  position = (%3.1f, %3.1f),  k10 = %2.1f       ", n, centroid.Xb, centroid.Yb, k10);
     //centroid.Xb, centroid.Yb, k10
     file.seekp(0);
-    file << (int)centroid.Xb << " " << (int)centroid.Yb/1 << " " << n << " ";
+    file << (int)centroid.Xb << " " << (int)centroid.Yb/1 << " " << (int)n << " " << (int)k10 << " ";
 }
 
 //entry point
@@ -361,7 +361,7 @@ int main(int argc, const char **argv) {
    int exposuremode = 0; // gng
 
    std::ofstream outputFile;
-   outputFile.open("out.txt");
+   outputFile.open("/tmp/picam-output");
 
    // Main loop
    while(true) {
