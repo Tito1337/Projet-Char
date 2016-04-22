@@ -1,5 +1,5 @@
 // Configuration
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 128
 #define I2C_ADDRESS 8
 
 // Debug
@@ -16,7 +16,7 @@
 // Variables globales
 char buffer_receive[BUFFER_SIZE];
 char buffer_send[BUFFER_SIZE];
-int sofar;
+int sofar=0;
 
 void Communications_setup() {
   #ifdef DEBUG
@@ -59,8 +59,9 @@ void processCommand() {
   cmd = parseNumber('F',-1);
   switch(cmd) {
     case  1: { // F1 : se déplacer
-      // Ex : F1 R999999.99 L999999.99 S999
-      //doMove(parseNumber('R', 0), parseNumber('L', 0), parseNumber('S', 0));
+      // Ex : F1 R999999.99 L999999.99
+      Serial.println("COUCOU");
+      doMove(parseNumber('D', 0), parseNumber('A', 0));
       break;
       }
     default:  break;
@@ -87,18 +88,24 @@ void getPosition(bool R, bool L) {
   if(L) DEBUG_PRINT("left ");
   DEBUG_PRINTLN();
 
-  wireSend("Q1 R42 L42");
+  wireSend("Q1 R42 L42\n");
 }
 
 void getSensors(bool A, bool B, bool C, bool D) {
   DEBUG_PRINT("You asked for sensors ");
-  if(A) DEBUG_PRINT("A ");
+  if(A){
+    DEBUG_PRINT("A ");
+    if (finished()){
+      wireSend("Q2 A1\n");
+    }
+    else wireSend("Q2 A0\n");
+  }
   if(B) DEBUG_PRINT("B ");
   if(C) DEBUG_PRINT("C ");
   if(D) DEBUG_PRINT("D ");
   DEBUG_PRINTLN();
   
-  wireSend("Q2 A1 C3");
+  wireSend("Q2 A1 C3\n");
 }
 
 void wireReceiveEvent(int howMany) {

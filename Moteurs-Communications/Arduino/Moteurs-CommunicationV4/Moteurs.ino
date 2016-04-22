@@ -11,7 +11,7 @@
 
 // Définition des pins Arduino
 #define PIN_DIR_L1 4 // Sélecteur de direction 1 du moteur L
-#define PIN_PWM_L 10 // PWM pour régler la vitesse du moteur L
+#define PIN_PWM_L 7 // PWM pour régler la vitesse du moteur L
 #define PIN_DIR_R1 6 // Sélecteur de direction 1 du moteur R
 #define PIN_PWM_R 11 // PWM pour régler la vitesse du moteur R
 #define PIN_COUNTER_L 2 // Roue codeuse du moteur L
@@ -52,6 +52,9 @@ PID PIDangulaire(&InputAng, &OutputAng, &SetpointAng,2,2,0, DIRECT);
 // Initialisation du canon
 Servo servoCanon;  // crée l'objet de type servo afin de controler ce dernier
 int pos = 0;    // initialisation de la position
+// Commande moteur roue tournante
+// Attention ne pas utiliser serial avec!
+#define PIN_ROUE_LANCEMENT 1
 
 
 // Moteurs_setup doit être appelé dans le setup() de l'Arduino pour configurer le module moteurs
@@ -77,7 +80,7 @@ void Moteurs_setup() {
   //SetpointAng = 0;
 
   // Canon
-  servoCanon.attach(12);  // attache la pin 12 à l'objet servo
+  servoCanon.attach(5);  // attache la pin 5 à l'objet servo
 }
 
 // Moteurs_loop doit être appelé dans le loop() de l'Arduino pour gérer le module moteurs
@@ -223,8 +226,6 @@ void doMove(float distance, float angle){
   SetpointAng = absAngle/CM_TO_COUNT_RATIO;
   
   // Pour ralentir le démarrage, initialisation de la vitesse à une valeur moyenne
-  //SpeedR = 30;
-  //SpeedL = 30;  
 }
 
 //Fonction calculant la distance entre un objet et le robot pour ainsi arrêter le robot en urgence avant la percution. 
@@ -242,12 +243,15 @@ void ultrasons()
   float temps = duration/10000.0; 
   distUS = temps*SPEEDSOUND; //en cm
   delay(250);
-  Serial.print("distance ultrasons---- ");
-  Serial.println(distUS);
+  //Serial.print("distance ultrasons---- ");
+  //Serial.println(distUS);
 }
 
 // Gestion du tir et de l'acheminement des balles dans le canon
 void shoot(){ 
+  digitalWrite(PIN_ROUE_LANCEMENT, HIGH);
+  // Délais pour permettre à la roue de se lancer
+  delay(2000);
   for(pos = 0; pos <= 180; pos += 1) // goes from 0 degrees to 180 degrees 
   {                                  // in steps of 1 degree 
     servoCanon.write(pos);              // tell servo to go to position in variable 'pos' 
@@ -259,4 +263,12 @@ void shoot(){
     delay(15);                       // waits 15ms for the servo to reach the position 
   } 
 } 
+// Fini?
+bool finished(){
+  if (InputLin > SetpointLin){
+      return true;
+    }
+    else false;
+    
+}
 
