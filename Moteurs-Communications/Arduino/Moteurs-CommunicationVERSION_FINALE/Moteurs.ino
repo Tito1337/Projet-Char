@@ -22,7 +22,7 @@
 #define PIN_ULTRASONS_ECHO 9 // Capteur ultrasons 
 
 // Autres constantes
-#define CM_TO_COUNT_RATIO 0.11 // Nombre de centimètres par compte des roues codeuses
+#define CM_TO_COUNT_RATIO 0.22 // Nombre de centimètres par compte des roues codeuses
 #define SPEEDSOUND 340 // Vitesse du son en m/s
 #define FORWARD 1
 #define BACKWARD 0
