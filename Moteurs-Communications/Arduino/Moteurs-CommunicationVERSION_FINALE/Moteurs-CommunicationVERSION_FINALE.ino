@@ -1,5 +1,5 @@
 #include <EEPROM.h>
-int i;
+
 void setup() {
   Communications_setup();
   Moteurs_setup();
