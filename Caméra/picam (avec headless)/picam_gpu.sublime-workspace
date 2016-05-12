@@ -1,0 +1,697 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"back",
+				"backup_manager"
+			],
+			[
+				"work",
+				"Workpackages"
+			],
+			[
+				"permutation",
+				"permutationIterator"
+			],
+			[
+				"Rota",
+				"RotaryCount2"
+			],
+			[
+				"M2",
+				"M2forward"
+			],
+			[
+				"M1",
+				"M1backwards"
+			],
+			[
+				"co",
+				"count1"
+			],
+			[
+				"E",
+				"EncodersThread"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "graphics.cpp",
+			"settings":
+			{
+				"buffer_size": 28315,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "graphics.h",
+			"settings":
+			{
+				"buffer_size": 3675,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"contents": "// gng  This version is based on graphics.cpp from Chris Cummings\n// ref: http://robotblogging.blogspot.be/2013/10/gpu-accelerated-camera-processing-on.html\n// Color detection + statistics (N, sX, sY, sD²)\n\n#define MAIN_TEXTURE_WIDTH 768\n#define MAIN_TEXTURE_HEIGHT 512\n\n#include <stdio.h>\n#include <unistd.h>\n#include \"camera.h\"\n#include \"graphics.h\"\n#include <time.h>\n#include <curses.h>\n#include <complex>\n#include <fstream>\n\n\n// for text\n#include <ft2build.h>  // need  include_directories(/usr/include/freetype2)  in file  CMakeLists.txt\n#include FT_FREETYPE_H\n\n#define TEXTURE_GRID_COLS 4\n#define TEXTURE_GRID_ROWS 4\n#define PSEUDOMIPMAPLEVELS 6\n\n#define IDCOL0 0.996078431372549  // 254./255.\n#define IDCOL1 0.992156862745098  // 253./255.\n#define IDCOL2 0.988235294117647  // 252./255.\n#define IDCOL3 0.984313725490196  // 251./255.\n\ntypedef struct xref_tb  // gng : inspired from RaspiCLI.h\n{\n   char mode[15];\n   MMAL_PARAM_AWBMODE_T mmal_mode;\n} XREF_TB;\n\ntypedef struct xref_te  // gng : inspired from RaspiCLI.h\n{\n   char mode[15];\n   MMAL_PARAM_EXPOSUREMODE_T mmal_mode;\n} XREF_TE;\n\ntypedef struct xyb_tb  // gng - Jeremy Bartholomeus\n{\n   float Xb;\n   float Yb;\n} XYB_TB;\n\ntypedef struct xref_tm // Jeremy Bartholomeus\n{\n   char mode[15];\n} XREF_TM;\n\nXREF_TB awb_map[] =\n{\n   {\"off         \",  MMAL_PARAM_AWBMODE_OFF},   // char *mode, int mmal_mode\n   {\"auto        \",  MMAL_PARAM_AWBMODE_AUTO},\n   {\"sun         \",  MMAL_PARAM_AWBMODE_SUNLIGHT},\n   {\"cloud       \",  MMAL_PARAM_AWBMODE_CLOUDY},\n   {\"shade       \",  MMAL_PARAM_AWBMODE_SHADE},\n   {\"tungsten    \",  MMAL_PARAM_AWBMODE_TUNGSTEN},\n   {\"fluorescent \",  MMAL_PARAM_AWBMODE_FLUORESCENT},\n   {\"incandescent\",  MMAL_PARAM_AWBMODE_INCANDESCENT},\n   {\"flash       \",  MMAL_PARAM_AWBMODE_FLASH},\n   {\"horizon     \",  MMAL_PARAM_AWBMODE_HORIZON}\n};\n\nXREF_TE  exposure_map[] =\n{\n   {\"auto        \",  MMAL_PARAM_EXPOSUREMODE_AUTO},\n   {\"night       \",  MMAL_PARAM_EXPOSUREMODE_NIGHT},\n   {\"nightpreview\",  MMAL_PARAM_EXPOSUREMODE_NIGHTPREVIEW},\n   {\"backlight   \",  MMAL_PARAM_EXPOSUREMODE_BACKLIGHT},\n   {\"spotlight   \",  MMAL_PARAM_EXPOSUREMODE_SPOTLIGHT},\n   {\"sports      \",  MMAL_PARAM_EXPOSUREMODE_SPORTS},\n   {\"snow        \",  MMAL_PARAM_EXPOSUREMODE_SNOW},\n   {\"beach       \",  MMAL_PARAM_EXPOSUREMODE_BEACH},\n   {\"verylong    \",  MMAL_PARAM_EXPOSUREMODE_VERYLONG},\n   {\"fixedfps    \",  MMAL_PARAM_EXPOSUREMODE_FIXEDFPS},\n   {\"antishake   \",  MMAL_PARAM_EXPOSUREMODE_ANTISHAKE},\n   {\"fireworks   \",  MMAL_PARAM_EXPOSUREMODE_FIREWORKS}\n};\n\nXREF_TM set_map[] =  // affichage des modes de prises de données (mesures ou etalonage)  Jérémy Bartholomeus\n{\n   {\"Mesurements\"},\n   {\"Calibration\"}\n};\n\nchar tmpbuff[MAIN_TEXTURE_WIDTH*MAIN_TEXTURE_HEIGHT*4];\n\nbool CheckGL = true;\n\nvoid getimobj(int icolor, uint32_t* tex, int level, int r0, int nr, int *cFirst, int *cLast, uint32_t *n, uint32_t *sx, uint32_t *sy, uint32_t *sd2) {\n   /*\n    * IN:  icolor   index of color  [0-3]\n    *      tex      texture content from col_nsss_cccc_textures[level]\n    *      level    level of tex  [0-5]         0:384x256(96x64)  1:192x128(48x32)  2:96x64(24x16)  3:48x32(12x8)  4:24x16(6x4)  5:12x8(3x2)\n    *      r0       first row of polygon where to add n, sx, sy and sd2\n    *      nr       number of rows of polygon\n    *      cFirst   pointer to index of first colum of polygon for first row, indices must be given in a vector cFirst[nr]\n    *      cLast    pointer to index of last colum of polygon for first row, indices must be given in a vector cLast[nr]\n    *      n        where to add n       note:  first row of tex :   n0   n1   n2   n3   n0   n1   n2 ...   where 0, 1, 2, 3 is icolor\n    *      sx       where to add sx             2d                  sx0  sx1  sx2  sx3  sx0  sx1  sx2 ...\n    *      sy       where to add sy             3d                  sy0  sy1  sy2  sy3  sy0  sy1  sy2 ...\n    *      sd2      where to add sd²            4th                sd²0 sd²1 sd²2 sd²3 sd²0 sd²1 sd²2 ...\n    */\n    int W = MAIN_TEXTURE_WIDTH>>(level+1);\n    int r;\n    int c;\n    for (int ir=0; ir<nr; ir++) {\n        for (int ic = cFirst[ir]; ic<=cLast[ir]; ic++) {\n            c = ic*4+icolor;\n            r = (r0+ir)*4;\n            *n += tex[r*W + c];\n            *sx += tex[(r+1)*W + c];\n            *sy += tex[(r+2)*W + c];\n            *sd2 += tex[(r+3)*W + c];\n        }\n    }\n}\n\nvoid interestZoneOutline(int level, int r0, int nr, int* cFirst, int* cLast, GLfloat* vertices) {\n   /* Bouw polygon around image zone\n    * IN:  level    level of tex  [0-5]         0:384x256(96x64)  1:192x128(48x32)  2:96x64(24x16)  3:48x32(12x8)  4:24x16(6x4)  5:12x8(3x2)\n    *      r0       first row of polygon where to add n, sx, sy and sd2\n    *      nr       number of rows of polygon  Attention! per row, 16 float in vertices !\n    *      cFirst   pointer to index of first colum of polygon for first row, indices must be given in a vector cFirst[nr]\n    *      cLast    pointer to index of last colum of polygon for first row, indices must be given in a vector cLast[nr]\n    * OUT: vertices points of polygon, 2*2*nr points xyzw = 16*nr elements\n    */\n    float sW = 1.0 / (MAIN_TEXTURE_WIDTH>>(level+3)); //  2.0/12 for level 3\n    float sH = 1.0 / (MAIN_TEXTURE_HEIGHT>>(level+3)); // 2.0/8 for level 3\n    for (int k=0; k<nr; k++) {\n        vertices[8*k]   = float(cFirst[k])*sW; // x between 0 and +1\n        vertices[8*k+1] = float(r0+k)*sH; // y between 0 and +1\n        vertices[8*k+2] = 1.0; // z\n        vertices[8*k+3] = 1.0; // w\n        vertices[8*k+4] = float(cFirst[k])*sW; // x between 0 and +1\n        vertices[8*k+5] = float(r0+k+1)*sH; // y between 0 and +1\n        vertices[8*k+6] = 1.0; // z\n        vertices[8*k+7] = 1.0; // w\n    }\n    for (int k=0; k<nr; k++) {\n        vertices[8*(k+nr)]   = float(cLast[nr-1-k]+1)*sW; // x between 0 and +1\n        vertices[8*(k+nr)+1] = float(r0+nr-k)*sH; // y between 0 and +1\n        vertices[8*(k+nr)+2] = 1.0; // z\n        vertices[8*(k+nr)+3] = 1.0; // w\n        vertices[8*(k+nr)+4] = float(cLast[nr-1-k]+1)*sW; // x between 0 and +1\n        vertices[8*(k+nr)+5] = float(r0+nr-k-1)*sH; // y between 0 and +1\n        vertices[8*(k+nr)+6] = 1.0; // z\n        vertices[8*(k+nr)+7] = 1.0; // w\n    }\n}\n\nvoid objectPosition(int icolor, uint32_t* tex, int level, int r0, int nr, int* cFirst, int* cLast, float k10max, int textcolor, int rtext, int ctext, XYB_TB centroid, std::ofstream &file) {\n   /* Bouw polygon around zone of interest, compute position of object, draw it and print results\n    * IN:  icolor    index of color  [0-3]\n    *      tex       texture content from col_nsss_cccc_textures[level]\n    *      level     level of tex  [0-5]         0:384x256(96x64)  1:192x128(48x32)  2:96x64(24x16)  3:48x32(12x8)  4:24x16(6x4)  5:12x8(3x2)\n    *      r0        first row of polygon where to add n, sx, sy and sd2\n    *      nr        number of rows of polygon\n    *      cFirst    pointer to index of first colum of polygon for first row, indices must be given in a vector cFirst[nr]\n    *      cLast     pointer to index of last colum of polygon for first row, indices must be given in a vector cLast[nr]\n    *      k10max    max of k10 to consider object detected and display green cross\n    *      textcolor number of color for text 3:red, 5:green, 7:blue\n    *      rtext     first row for text (between 6 and 8)\n    *      ctext     first column for text\n    *      centroid  struct .Xb  .Yb\n    */\n\n    // draw outline of zone of interest\n    float colwhite[4] = {1.0, 1.0, 1.0, 1.0};\n    float colgreen[4] = {.0, 1.0, .0, 1.0};\n    float colblack[4] = {.0, .0, .0, 1.0};\n    GLfloat vertices[nr*16];\n    interestZoneOutline(level, r0, nr, cFirst, cLast, vertices); // compute vertices of outline\n    int polylength = nr*4; // 4 segments per row for outline of interest zone\n    DrawPolygon(vertices, polylength, GL_LINE_LOOP, 1, colwhite, CheckGL); // draw outline of interest zone\n\n    // Compute position of object\n    uint32_t  n=0; uint32_t  sx=0;  uint32_t  sy=0; uint32_t  sd2=0;\n    float   f_n=0; float   f_sx=0;  float   f_sy=0; float   f_sd2=0;\n    centroid.Xb = 0;\n    centroid.Yb = 0;\n    float k10 = 0.0;\n    getimobj(icolor, tex, level, r0, nr, cFirst, cLast, &n, &sx, &sy, &sd2);\n    if (n>0) {\n        f_n = n;  f_sx = sx;  f_sy = sy;  f_sd2 = sd2;\n        centroid.Xb = f_sx/f_n;\n        centroid.Yb = f_sy/f_n;\n      //position(centroid.Xb, centroid.Yb);\n        k10 = 62.831853 * (f_sd2 - (f_sx*f_sx + f_sy*f_sy)/f_n ) / (f_n*f_n);\n\n        // draw centroid\n        float dx=5.0/MAIN_TEXTURE_WIDTH;\n        float dy=5.0/MAIN_TEXTURE_HEIGHT;\n        float XbNorm = centroid.Xb*2.0/MAIN_TEXTURE_WIDTH; // divided by image width\n        float YbNorm = centroid.Yb*2.0/MAIN_TEXTURE_HEIGHT; // divided by image height\n\n        GLfloat vertices[16] = {\n            XbNorm-dx, YbNorm, 1.0f, 1.0f,\n            XbNorm+dx, YbNorm, 1.0f, 1.0f,\n            XbNorm, YbNorm-dy, 1.0f, 1.0f,\n            XbNorm, YbNorm+dy, 1.0f, 1.0f\n        };\n        int polylength = 4; // 4 points (2* 2segments)\n        if (k10<=k10max) { // if detection OK\n            DrawPolygon(vertices, polylength, GL_LINES, 5, colgreen, CheckGL); // draw green cross\n            DrawPolygon(vertices, polylength, GL_LINES, 2, colblack, CheckGL); // draw green cross\n        }\n        else DrawPolygon(vertices, polylength, GL_LINES, 1, colwhite, CheckGL); // draw cross at centroid\n    }\n    //mvprintw(rtext, ctext, \"    Object:   n = %d,  position = (%3.1f, %3.1f),  k10 = %2.1f       \", n, centroid.Xb, centroid.Yb, k10);\n    //centroid.Xb, centroid.Yb, k10\n    file.seekp(0);\n    file << (int)centroid.Xb << \" \" << (int)centroid.Yb/1 << \" \" << (int)n << \" \" << (int)(10*k10) << \" \";\n}\n\n//entry point\nint main(int argc, const char **argv) {\n   char fromkeyb[50];\n   ColorParam colpar[4];\n   int currcol; // current editable col (selected with 'x', 'y', 'z' or 'w')\n   int currcomp; // current editable component (selected with 'r', 'g' or 'b')\n   int currminmax; // current editable by '<' or '>' is: 0:min 1:max\n   float step = 0.01; // step for min or max change\n   char filename[200];\n   InitGraphics(); //init graphics and the camera\n\n   // Christophe De Wolf : Load filters from file\n   if(argc < 2) {\n      printf(\"ERREUR : Veuillez fournir un fichier de filtre en argument\\r\\n\");\n      return 1;\n   }\n\n   std::ifstream infile(argv[1]);\n   int colMain;\n   float colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB;\n\n   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;\n   printf(\"Settings 0 : %d %f %f %f %f %f %f\\r\\n\", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);\n   colpar[0].setCol ( 1 , 0 , 0 , IDCOL0 ); // rgba: RED  alpha indicates color number\n   colpar[0].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main\n   colpar[0].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R\n   colpar[0].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R\n\n   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;\n   printf(\"Settings 1 : %d %f %f %f %f %f %f\\r\\n\", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);\n   colpar[1].setCol ( 0 , .6, 0 , IDCOL1 ); // rgba: GREEN\n   colpar[1].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main\n   colpar[1].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R\n   colpar[1].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R\n\n   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;\n   printf(\"Settings 2 : %d %f %f %f %f %f %f\\r\\n\", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);\n   colpar[2].setCol ( 0 , 0 , 1 , IDCOL2 ); // rgba: BLUE\n   colpar[2].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main\n   colpar[2].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R\n   colpar[2].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R\n\n   infile >> colMain >> colMinR >> colMinG >> colMinB >> colMaxR >> colMaxG >> colMaxB;\n   printf(\"Settings 3 : %d %f %f %f %f %f %f\\r\\n\", colMain, colMinR, colMinG, colMinB, colMaxR, colMaxG, colMaxB);\n   colpar[3].setCol ( 1,  0,  1 , IDCOL3 ); // rgba: BLACK\n   colpar[3].setMain(colMain); // 1:r, 2:g, 3:b, 0:not used  Other components are divided by main\n   colpar[3].setMin (colMinR, colMinG, colMinB, 0 ); // rgba  G and B relative to R\n   colpar[3].setMax (colMaxR, colMaxG, colMaxB, 1 ); // rgba  G and B relative to R\n\n   CCamera* cam = StartCamera(MAIN_TEXTURE_WIDTH, MAIN_TEXTURE_HEIGHT,15,1,false); // 15 frames/s\n\n   //create 4 textures of decreasing size\n   GfxTexture ytexture,utexture,vtexture,rgbtexture,rgbtextures[10]\n               ,gngdetectcoltexture, col_sxsy0_texture\n               ,col_nsss_cccc_textures[PSEUDOMIPMAPLEVELS],col_k_cccc_textures[PSEUDOMIPMAPLEVELS];\n   uint32_t* tex32nssscccc[PSEUDOMIPMAPLEVELS];\n   ytexture.CreateGreyScale(MAIN_TEXTURE_WIDTH,MAIN_TEXTURE_HEIGHT);\n   utexture.CreateGreyScale(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2);\n   vtexture.CreateGreyScale(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2);\n\n   GfxTexture yreadtexture,ureadtexture,vreadtexture;\n   yreadtexture.CreateRGBA(MAIN_TEXTURE_WIDTH,MAIN_TEXTURE_HEIGHT);\n   yreadtexture.GenerateFrameBuffer();\n   ureadtexture.CreateRGBA(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2);\n   ureadtexture.GenerateFrameBuffer();\n   vreadtexture.CreateRGBA(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2);\n   vreadtexture.GenerateFrameBuffer();\n\n   GfxTexture* texture_grid[TEXTURE_GRID_COLS*TEXTURE_GRID_ROWS];\n   memset(texture_grid,0,sizeof(texture_grid));\n   int next_texture_grid_entry = 0;\n\n   // gng detectcol texture\n   gngdetectcoltexture.CreateRGBA(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2); // 384x256\n   gngdetectcoltexture.GenerateFrameBuffer();\n   texture_grid[next_texture_grid_entry++] = &gngdetectcoltexture;\n\n   // texture with  a:detected col or 255,  b:y(0-255),  r:x(lsb) g:x(msb) \n   col_sxsy0_texture.CreateRGBA(MAIN_TEXTURE_WIDTH/2,MAIN_TEXTURE_HEIGHT/2); // 384x256\n   col_sxsy0_texture.GenerateFrameBuffer();\n\n   for(int i = 0; i < PSEUDOMIPMAPLEVELS; i++)\n   {\n     // example: for main 768x512 and 6 levels, create from 96x64 up to 3x2 blocs 4x4\n     //   one bloc is :     Nc0    Nc1    Nc2    Nc3\n     //                    ΣXc0   ΣXc1   ΣXc2   ΣXc3         texture is from  384x256\n     //    (c0: color0)    ΣYc0   ΣYc1   ΣYc2   ΣYc3                    up to  12x8\n     //                   ΣD²c0  ΣD²c1  ΣD²c2  ΣD²c3\n     col_nsss_cccc_textures[i].CreateRGBA(MAIN_TEXTURE_WIDTH>>(i+1),MAIN_TEXTURE_HEIGHT>>(i+1));\n     col_nsss_cccc_textures[i].GenerateFrameBuffer();\n     tex32nssscccc[i] = (uint32_t*)malloc((MAIN_TEXTURE_WIDTH>>(i+1))*(MAIN_TEXTURE_HEIGHT>>(i+1))*4); // for texture extraction after process\n   }\n\n   for(int i = 2; i < PSEUDOMIPMAPLEVELS; i++)  // not defined before i=2\n   {\n     // computed from col_nsss_cccc_textures but one value of k for each [Nc.;ΣXc.;ΣYc.;ΣD²c.]\n     col_k_cccc_textures[i].CreateRGBA(MAIN_TEXTURE_WIDTH>>(i+1),MAIN_TEXTURE_HEIGHT>>(i+3));\n     col_k_cccc_textures[i].GenerateFrameBuffer();\n   }\n\n   float texture_grid_col_size = 2.f/TEXTURE_GRID_COLS;\n   float texture_grid_row_size = 2.f/TEXTURE_GRID_ROWS;\n\n   printf(\"Running frame loop\\n\");\n\n   //read start time\n   long int start_time;\n   long int time_difference;\n   time_t start_time_t;\n   time_t time_diff;\n   struct timespec gettime_now;\n   clock_gettime(CLOCK_REALTIME, &gettime_now);\n   start_time = gettime_now.tv_nsec ;\n   start_time_t = gettime_now.tv_sec ;\n   double total_time_s = 0;\n\n   initscr();      /* initialize the curses library */\n   start_color();  /* Start color for characters on screen */\n   init_pair(1, COLOR_MAGENTA, COLOR_BLACK); // 1: not selected x, y, z or w\n   init_pair(2, COLOR_MAGENTA, COLOR_WHITE); // 2:     selected x, y, z or w\n   init_pair(3, COLOR_RED, COLOR_BLACK);     // 3: not selected red\n   init_pair(4, COLOR_RED, COLOR_WHITE);     // 4:     selected red\n   init_pair(5, COLOR_GREEN, COLOR_BLACK);   // 5: not selected green\n   init_pair(6, COLOR_GREEN, COLOR_WHITE);   // 6:     selected green\n   init_pair(7, COLOR_BLUE, COLOR_BLACK);    // 7: not selected blue\n   init_pair(8, COLOR_BLUE, COLOR_WHITE);    // 8:     selected blue\n   int iColPair;\n\n   keypad(stdscr, TRUE);  /* enable keyboard mapping */\n   nonl();         /* tell curses not to do NL->CR/NL on output */\n   cbreak();       /* take input chars one at a time, no wait for \\n */\n   clear();\n   nodelay(stdscr, TRUE);\n\n   char colxyzw[5] = \"xyzw\";\n   char colrgba[5] = \"RGBA\";\n   currcol=0; // current editable col (selected with 'x', 'y', 'z' or 'w')\n   currcomp=0; // current editable component (selected with 'r', 'g' or 'b')\n   currminmax=0; // current editable by '<' or '>' is: 0:min 1:max\n\n   int awbmode = 1; // gng\n   int exposuremode = 0; // gng\n\n   std::ofstream outputFile;\n   outputFile.open(\"/tmp/picam-output\");\n\n   // Main loop\n   while(true) {\n      //spin until we have a camera frame\n      const void* frame_data; int frame_sz;\n      while(!cam->BeginReadFrame(0,frame_data,frame_sz)) {};\n\n      //lock the chosen frame buffer, and copy it directly into the corresponding open gl texture\n      {\n         const uint8_t* data = (const uint8_t*)frame_data;\n         int ypitch = MAIN_TEXTURE_WIDTH;\n         int ysize = ypitch*MAIN_TEXTURE_HEIGHT;\n         int uvpitch = MAIN_TEXTURE_WIDTH/2;\n         int uvsize = uvpitch*MAIN_TEXTURE_HEIGHT/2;\n         int upos = ysize;\n         int vpos = upos+uvsize;\n         ytexture.SetPixels(data, CheckGL);\n         utexture.SetPixels(data+upos, CheckGL);\n         vtexture.SetPixels(data+vpos, CheckGL);\n         cam->EndReadFrame(0);\n      }\n\n      //begin frame, draw the texture then end frame (the bit of maths just fits the image to the screen while maintaining aspect ratio)\n      BeginFrame(CheckGL);\n      float aspect_ratio = float(MAIN_TEXTURE_WIDTH)/float(MAIN_TEXTURE_HEIGHT);\n      float screen_aspect_ratio = 1280.f/720.f;\n      //these are just here so we can access the yuv data cpu side - opengles doesn't let you read grey ones cos they can't be frame buffers!\n      DrawTextureRect(&ytexture,-1,-1,1,1,CheckGL, &yreadtexture);\n      DrawTextureRect(&utexture,-1,-1,1,1,CheckGL, &ureadtexture);\n      DrawTextureRect(&vtexture,-1,-1,1,1,CheckGL, &vreadtexture);\n      //X150225 DrawYUVTextureRect(&ytexture,&utexture,&vtexture,-1.f,-1.f,1.f,1.f,CheckGL, &rgbtexture);\n\n      DrawGngdetectcolRect(&ytexture,&utexture,&vtexture,-1,-1,1,1,CheckGL, &gngdetectcoltexture, colpar); // see graphics.cpp gng\n      //X150416 InitCol_sxsy0_TextureRect(&gngdetectcoltexture,-1,-1,1,1,CheckGL, &col_sxsy0_texture);\n      InitCol_sxsy0_TextureRect(&gngdetectcoltexture,-1,1,1,-1,CheckGL, &col_sxsy0_texture);\n\n      // Statistic process for centroid\n      Init_nsss_cccc_TextureRect(&col_sxsy0_texture,-1.f,-1.f,1.f,1.f,CheckGL, &col_nsss_cccc_textures[0]);\n      for(int texidx = 1; texidx<PSEUDOMIPMAPLEVELS; texidx++) {\n         Sum4_d4_d4_TextureRect(&col_nsss_cccc_textures[texidx-1],-1.f,-1.f,1.f,1.f,CheckGL, &col_nsss_cccc_textures[texidx]);\n         col_nsss_cccc_textures[texidx].getuint32Texture(tex32nssscccc[texidx]);\n      }\n      // col_k_textures\n      for(int texidx = 2; texidx<PSEUDOMIPMAPLEVELS; texidx++)\n         Col_k_cccc_TextureRect(&col_nsss_cccc_textures[texidx],-1.f,-1.f,1.f,1.f,CheckGL, &col_k_cccc_textures[texidx]);\n\n      if(GfxTexture* tex = texture_grid[0]) { // Jérémy Bartholomeus\n         //X150416 DrawTextureRect(tex,-1,-1,1,1,CheckGL, NULL);\n         DrawTextureRect(tex,-1,1,1,-1,CheckGL, NULL);\n\n         // zone of interest  (for a green object)\n         int level = 1; // (48x24)\n         int r0=0;     // first row of polygonal zone where is object\n         int cFirst[] = { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,\n                          0,  0,  0,  0,  0,  0,  0,  0,  0,  0,\n                          0,  0,  0,  0,  0,  0,  0,  0,  0,  0,\n                          0,  0};\n         int cLast[]  = {47, 47, 47, 47, 47, 47, 47, 47, 47, 47,\n                         47, 47, 47, 47, 47, 47, 47, 47, 47, 47,\n                         47, 47, 47, 47, 47, 47, 47, 47, 47, 47,\n                         47, 47};\n         int nr = sizeof(cFirst)/sizeof(cFirst[0]);\n         int icolor=1; // 1: second color for object to detect (green)\n         int k10max = 20;\n         int textcolor = 5; // 3:red, 5:green, 7:blue\n         int rtext = 7;\n         int ctext = 10;\n         XYB_TB centroid[1];\n         objectPosition(icolor, tex32nssscccc[level], level, r0, nr, cFirst, cLast, k10max, textcolor, rtext, ctext, centroid[0], outputFile);\n      }\n      EndFrame(CheckGL);\n      CheckGL = false; // no more check\n   }\n\n   // Exit routines\n   StopCamera();\n   endwin();\n}\n",
+			"file": "/run/user/1000/gvfs/sftp:host=172.17.35.179,user=root/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam-headless.cpp",
+			"file_size": 20918,
+			"file_write_time": 131057012200000000,
+			"settings":
+			{
+				"buffer_size": 20884,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/Motors-arrows.py",
+			"settings":
+			{
+				"buffer_size": 1732,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "test.cpp",
+			"settings":
+			{
+				"buffer_size": 441,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "CMakeLists.txt",
+			"settings":
+			{
+				"buffer_size": 1055,
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 96.0,
+		"last_filter": "hih",
+		"selected_items":
+		[
+			[
+				"hih",
+				"Highlight Whitespaces: Toggle"
+			],
+			[
+				"scope",
+				"Scope: Show in Status Bar"
+			],
+			[
+				"package",
+				"Preferences: Browse Packages"
+			]
+		],
+		"width": 392.0
+	},
+	"console":
+	{
+		"height": 146.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW"
+	],
+	"file_history":
+	[
+		"/run/user/1000/gvfs/sftp:host=172.17.35.179,user=root/home/pi/Projet-Char/Main/main.py",
+		"/run/user/1000/gvfs/sftp:host=172.17.35.179,user=root/home/pi/Projet-Char/Caméra/picam_gpu_NEW/filters.conf",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/picam.cpp",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/picam-headless.cpp",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Main/main.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Main",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/settings.conf",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/test.cpp",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/settings.csv",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/test.xml",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be/home/tito/www/cesec.be/fusion/includes/template/pos/checkout_result.tpl",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/git/Caméra/picam_gpu_NEW/Makefile",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/static/src/xml/base.xml",
+		"/home/tito/Programmes/odoo/addons/project_issue/project_issue_view.xml",
+		"/home/tito/Programmes/odoo/addons/project/project.py",
+		"/home/tito/Programmes/odoo/addons/project/report/project_report.py",
+		"/home/tito/Programmes/odoo/addons/project/__openerp__.py",
+		"/home/tito/Programmes/odoo/addons/project/__init__.py",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/security/ir.model.access.csv",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/views/project_customizations.xml",
+		"/home/tito/Programmes/odoo/addons/project/project_view.xml",
+		"/home/tito/Programmes/odoo/addons/project_issue/project_issue_menu.xml",
+		"/home/tito/Programmes/odoo/addons/website_forum/views/forum.xml",
+		"/home/tito/Programmes/odoo/addons/project/security/project_security.xml",
+		"/home/tito/Programmes/odoo/addons/lunch/data/lunch_data.xml",
+		"/home/tito/Programmes/odoo/addons/crm_partner_assign/crm_lead_view.xml",
+		"/home/tito/Programmes/odoo/addons/project/security/ir.model.access.csv",
+		"/home/tito/Programmes/odoo/addons/account/static/src/xml/account_reconciliation.xml",
+		"/home/tito/Programmes/odoo/addons/website_slides/view/website_slides.xml",
+		"/home/tito/Programmes/odoo/addons/website_forum/views/website_forum.xml",
+		"/home/tito/Programmes/odoo/addons/stock/stock.py",
+		"/home/tito/Programmes/odoo/addons/stock/product.py",
+		"/home/tito/Programmes/odoo/addons/project_issue/project_issue.py",
+		"/home/tito/Programmes/odoo/addons/marketing_campaign/marketing_campaign_workflow.xml",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/models/project_customizations.py",
+		"/home/tito/Programmes/odoo/addons/project/views/project.xml",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/models/__init__.py",
+		"/home/tito/Programmes/odoo/addons/project_issue/security/project_issue_security.xml",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/static/src/js/project_customizations.js",
+		"/run/user/1000/gvfs/sftp:host=ethylix.be/home/tito/1and1/cliqueici.info/wsb3900136801/4.html",
+		"/home/tito/Programmes/odoo/openerp/osv/fields.py",
+		"/home/tito/Programmes/odoo/addons/project_issue/project_dashboard.xml",
+		"/home/tito/Programmes/odoo/addons/web_kanban/static/src/xml/web_kanban.xml",
+		"/home/tito/Programmes/odoo/addons/project/static/src/js/project.js",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/__openerp__.py",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/security/nsilition_security.xml",
+		"/home/tito/Programmes/odoo/addons/project/project_dashboard.xml",
+		"/home/tito/Programmes/odoo/openerp/osv/fields.pyc",
+		"/home/tito/Programmes/odoo/openerp/fields.py",
+		"/home/tito/Programmes/odoo/openerp/fields.pyc",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/SI4L - Structure de l'Information/Eole (février)/labo2_XML_Schema/XMLSchema.xsd",
+		"/home/tito/Téléchargements/project_dashboard.xml",
+		"/home/tito/.cache/.fr-PxAC74/base_optional_quick_create/model.py",
+		"/home/tito/.cache/.fr-TGZWEB/eradicate_quick_create/model.py",
+		"/home/tito/Téléchargements/work_package - copie/work_package - copie/models.py",
+		"/home/tito/Programmes/odoo/addons/project/report/project_report_view.xml",
+		"/home/tito/.cache/.fr-UxkLF8/work_package - copie/models.py",
+		"/home/tito/Dropbox/Notes/ethylix-doc/WarezMachine/Automatic_Series_Download.md",
+		"/home/tito/Dropbox/Notes/ethylix-doc/WarezMachine/Plex.md",
+		"/home/tito/Dropbox/Notes/ethylix-doc/WarezMachine/Torrent.md",
+		"/home/tito/Dropbox/Notes/ethylix-doc/WarezMachine/Automatic_Data_Purge.md",
+		"/home/tito/Programmes/odoo/addons/project_issue/__openerp__.py",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/README.md",
+		"/home/tito/Dropbox/Programmes/Gilles-Saoul/GillesSaoul (copie)/bieres.py",
+		"/home/tito/Téléchargements/torrentsTime-download.pkg",
+		"/home/tito/Programmes/odoo/addons/project/static/src/xml/project.xml",
+		"/home/tito/Programmes/odoo/addons/project/project_data.xml",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/nsilition_projects.py",
+		"/home/tito/Dropbox/Travail/nSilition/SVN/main/nSi_ProjectMGMT/nsilition_projects/__init__.py",
+		"/home/tito/Programmes/odoo/addons/sale/security/sale_security.xml",
+		"/home/tito/Programmes/odoo/addons/project_issue/security/ir.model.access.csv",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop/themes/ysf/shopping-cart.tpl",
+		"/run/user/1000/gvfs/sftp:host=ethylix.be/home/tito/www/sms.proride.be/index.php",
+		"/home/tito/Programmes/odoo/addons/project/res_config.py",
+		"/home/tito/Programmes/odoo/addons/project/res_partner.py",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop/themes/ysf/order-opc.tpl",
+		"/home/tito/Programmes/odoo/custom-addons/nsilition_customizations/security/nsilition_security.xml",
+		"/home/tito/.config/sublime-text-3/Packages/User/Preferences.sublime-settings",
+		"/home/tito/Programmes/odoo/custom-addons/nsilition_customizations/models/__init__.py",
+		"/home/tito/Programmes/odoo/custom-addons/nsilition_customizations/README.md",
+		"/home/tito/.config/sublime-text-3/Packages/User/highlight_whitespaces.sublime-settings",
+		"/home/tito/.config/sublime-text-3/Packages/HighlightWhitespaces/highlight_whitespaces.py",
+		"/home/tito/.config/sublime-text-3/Packages/User/Python.sublime-settings",
+		"/home/tito/Programmes/odoo/custom-addons/nsilition_customizations/views/project_customizations.xml",
+		"/home/tito/Téléchargements/BingSiteAuth.xml",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop-dev/themes/ysf/category.tpl",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop-dev/override/controllers/front/CategoryController.php",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop-dev/themes/ysf/category-compare.tpl",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop-dev/themes/ysf/css/product.css",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop-dev/themes/ysf/css/global.css",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop/themes/ysf/css/global.css",
+		"/home/tito/Programmes/odoo/custom-addons/nsilition_customizations/__init__.py",
+		"/home/tito/Programmes/odoo/custom-addons/addon_skeleton/__init__.py",
+		"/home/tito/Programmes/odoo/custom-addons/addon_skeleton/models/project_customizations.py",
+		"/home/tito/Programmes/odoo/custom-addons/addon_skeleton/__openerp__.py",
+		"/home/tito/Programmes/odoo/custom-addons/todo_app/__openerp__.py",
+		"/home/tito/bus.py",
+		"/home/tito/bus-generate-array.py",
+		"/home/tito/bus-combinations.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/EX4C - Systèmes d'exploitation/9-Labo/copy.c",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/EX4C - Systèmes d'exploitation/9-Labo/multifact.c",
+		"/home/tito/Téléchargements/download (1).php",
+		"/home/tito/Téléchargements/download (2).php",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/EX4C - Systèmes d'exploitation/9-Labo",
+		"/home/tito/Dropbox/Backup/authplus.db",
+		"/run/user/1000/gvfs/sftp:host=192.168.123.112/home/pi/git/Communications/Raspberry/i2c-gcode.py",
+		"/home/tito/Programmes/shrinkpdf.sh",
+		"/home/tito/Programmes/curlMP4.sh",
+		"/home/tito/Téléchargements/col_nsss_cccc_5.rgba",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/comitard.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/login.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/comitards.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/encheres.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/adjuges.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/config.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/example.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/footer.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/header.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/index.php",
+		"/run/user/1000/gvfs/sftp:host=vweb.ethylix.be,user=root/home/sftp-only/mercato/www/reglement.php",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/wheel3.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/wheel2.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/wheel-encoders.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/Proximity-sensors.py",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/Motors-arrows.py",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop/themes/ysf/global.tpl",
+		"/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/Motors-test.py",
+		"/run/user/1000/gvfs/sftp:host=yousmartfix.com,user=root/home/www/prestashop/modules/bpostshm/bpostshm.php"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 93.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"col_nsss_cccc_textures",
+			"cFirst",
+			"output",
+			"objectPosition",
+			"selected_texture",
+			"setmode",
+			"getCol",
+			"getMin",
+			"colpar",
+			"currcol",
+			"do_pipe",
+			"i==",
+			"DrawGngdetectcolRect",
+			"colpar",
+			"argc",
+			"infile",
+			"	",
+			" ",
+			"printf",
+			"loop",
+			"colpar",
+			"setMin",
+			"IDCOL0",
+			"for",
+			"picam.cpp",
+			"DrawGngdetectcolRect",
+			"disprow",
+			"do_pipeline",
+			"step",
+			"InitGraphics();",
+			"object_robot_position",
+			"project_issues_ids",
+			"i_am_manager",
+			"i_am_manager':",
+			"i_am_manager",
+			"name=\"stage_id",
+			"menuitem",
+			"date_start",
+			"'no_of_days'",
+			"'no_of_days': fields.integer('# of Days', size=128, readonly=True),",
+			"auto",
+			"report",
+			"active",
+			"report_project_task_user",
+			"ProgrammingError: relation \"report_project_task_user\" does not exist\n",
+			"view_all_workpackages",
+			"view_all_workpackages\n",
+			"view_all_workpackages",
+			"model=\"ir.actions.act_window\">",
+			"standard",
+			"ir.actions.act_window",
+			"view_task_search_form",
+			"issue",
+			"calendar",
+			"standard",
+			"open_view_",
+			"view_mode",
+			"act_project_project_2_project_issue_all",
+			"view_mode",
+			"action_view_issues",
+			"kanban",
+			"project_issue_act_view_nocreate",
+			"open_view_issue",
+			"action_view_task",
+			"menuitem",
+			"open_view_issue",
+			"ir.actions.act_window.view",
+			"open_view_task_list_kanban",
+			"project_issue_kanban_view_nocreate",
+			"open_view_issue",
+			"project_issue_kanban_view",
+			"act_project_project_2_project_task_all",
+			"action=",
+			"action_view_task",
+			"view_id",
+			"name=\"views",
+			"action_task",
+			"action_view_task",
+			"do_not_create",
+			"view_task_search_form",
+			"action_view_task",
+			"menu_action_view_task",
+			"default",
+			"i_am_manager",
+			"context.get",
+			"<!-",
+			"create=\"",
+			"action_view_task",
+			"menu_project_management",
+			"project_task",
+			",project.task,",
+			"hide_progress",
+			"search",
+			"t-if=",
+			"channel",
+			"t-if=",
+			"i_am_manager",
+			"uid",
+			"user.id",
+			"next_stages",
+			"are_done",
+			"final stage",
+			"not_empty_next_stages",
+			"def _get_default_stage_id",
+			"get_default",
+			"empty_next_stages",
+			"get_default_stage_id",
+			"not_empty",
+			"project_workpackages_ids",
+			"not_empty_next_stages",
+			"next_stages",
+			"statusbar",
+			"next_stages",
+			"_get_lot_ids",
+			"lot_ids",
+			"update",
+			"onchange",
+			"for",
+			"string",
+			"fields.function",
+			"has_next_stages",
+			"_compute_lots_visible",
+			"_compute_lots_visible,",
+			"type=\"boolean",
+			"fields.function",
+			"fields.function(_date_end, type='date', string=\"Last task deadline\"),",
+			"_columns",
+			"next_stages"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"		",
+			"	",
+			"<record forcecreate=\"1\" ",
+			"HIDE_ON_MINIMAP",
+			"dst",
+			"src",
+			"dstFile",
+			"srcFile",
+			"2015-2016"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "graphics.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 28315,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								8767,
+								8767
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 5079.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "graphics.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3675,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								335,
+								335
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "/run/user/1000/gvfs/sftp:host=172.17.35.179,user=root/home/pi/Projet-Char/Caméra/picam_gpu_NEW/picam-headless.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 20884,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								10461,
+								10461
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 4804.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "/home/tito/Dropbox/École/ECAM/2015-2016/BP4B - Projet Robot/Noob/RoboPi/Motors-arrows.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1732,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1129,
+								1129
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 1071.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "test.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 441,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								57,
+								57
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "CMakeLists.txt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1055,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								937,
+								937
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 33.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "picam_gpu.sublime-project",
+	"replace":
+	{
+		"height": 64.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 240.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
